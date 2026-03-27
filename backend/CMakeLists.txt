@@ -126,6 +126,8 @@ enable_testing()
 add_executable(community_health_tests
     tests/test_all.cpp
     utils/DatabaseManager.cpp
+    dao/UserDAO.cpp
+    services/AuthService.cpp
 )
 
 target_include_directories(community_health_tests PRIVATE
