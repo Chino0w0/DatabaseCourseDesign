@@ -8,11 +8,14 @@
 #include <string>
 
 namespace {
+// 安全解析正整数参数：仅接受 >0 的值；非法、溢出或非正数时回退默认值。
 int parsePositiveInt(const std::string &value, int fallback) {
   try {
     const int parsed = std::stoi(value);
     return parsed > 0 ? parsed : fallback;
-  } catch (...) {
+  } catch (const std::invalid_argument &) {
+    return fallback;
+  } catch (const std::out_of_range &) {
     return fallback;
   }
 }

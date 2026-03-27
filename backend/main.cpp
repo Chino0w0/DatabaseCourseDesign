@@ -235,9 +235,12 @@ int main() {
 
   // ── 6. 挂载前端静态文件服务 ──────────────────────────────────
   const std::string frontendMountPath = resolveFrontendMountPath();
-  const bool legacyFrontend =
-      !frontendMountPath.empty() &&
-      fs::exists(fs::path(frontendMountPath) / "pages" / "login.html");
+  // 前端挂载类型在启动时确定；若运行中替换静态目录，需重启服务生效。
+  const bool legacyFrontend = !frontendMountPath.empty() &&
+                              fs::exists(fs::path(frontendMountPath) / "pages" /
+                                         "login.html") &&
+                              !fs::exists(fs::path(frontendMountPath) /
+                                          "index.html");
   if (frontendMountPath.empty()) {
     std::cerr << "[警告] 未找到 frontend 静态目录，页面资源将无法访问。"
               << std::endl;
