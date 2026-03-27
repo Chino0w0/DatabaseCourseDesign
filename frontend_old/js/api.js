@@ -5,7 +5,10 @@
  * 自动携带 Authorization: Bearer <token>，统一处理 401 自动跳转登录。
  */
 
-const API_BASE = '/api/v1';
+// 当且仅当前端独立运行在非 8080 端口时，跨域请求后端 8080 端口
+const API_BASE = (window.location.port && window.location.port !== '8080') 
+  ? 'http://127.0.0.1:8080/api/v1' 
+  : '/api/v1';
 
 const api = {
   /**
@@ -128,11 +131,16 @@ function renderSidebar(activePage) {
   const initial = user?.username?.charAt(0)?.toUpperCase() || '?';
 
   const nav = [
-    { id: 'dashboard', label: '数据概览', icon: '📊', href: '/pages/dashboard.html' },
-    { id: 'residents', label: '居民管理', icon: '👥', href: '/pages/residents.html' },
-    { id: 'health',    label: '健康档案', icon: '🏥', href: '/pages/health.html' },
-    { id: 'visits',    label: '随访管理', icon: '📋', href: '/pages/visits.html' },
+    { id: 'dashboard', label: '数据概览', icon: window.Icons ? window.Icons.dashboard : '📊', href: '/pages/dashboard.html' },
+    { id: 'residents', label: '居民管理', icon: window.Icons ? window.Icons.residents : '👥', href: '/pages/residents.html' },
+    { id: 'health',    label: '健康档案', icon: window.Icons ? window.Icons.health : '🏥', href: '/pages/health.html' },
+    { id: 'visits',    label: '随访管理', icon: window.Icons ? window.Icons.visits : '📋', href: '/pages/visits.html' },
   ];
+
+  // 仅超级管理员显示用户管理
+  if (user && user.role === 'admin') {
+    nav.push({ id: 'users', label: '用户管理', icon: window.Icons ? window.Icons.users : '⚙️', href: '/pages/users.html' });
+  }
 
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
@@ -157,9 +165,9 @@ function renderSidebar(activePage) {
         <div class="avatar">${initial}</div>
         <div class="user-info">
           <div class="name">${user?.username || '未知'}</div>
-          <div class="role">${user?.role || '未知角色'}</div>
+          <div class="role">${user?.role === 'admin' ? '管理员' : (user?.role || '医生/护士')}</div>
         </div>
-        <button class="btn-logout" onclick="handleLogout()" title="退出登录">退出</button>
+        <button class="btn btn-danger btn-sm" onclick="handleLogout()" title="退出登录" style="padding: 4px 8px; font-size: 0.8rem;">退出</button>
       </div>
     </div>
   `;

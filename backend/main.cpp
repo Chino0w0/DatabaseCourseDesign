@@ -120,15 +120,31 @@ static void registerSystemRoutes(httplib::Server &svr) {
  * @return 可用的 frontend 目录绝对路径；未找到则返回空字符串
  */
 static std::string resolveFrontendMountPath() {
-  const std::vector<fs::path> candidates = {
-      fs::current_path() / "frontend",
-      fs::current_path() / "backend" / ".." / "frontend",
-      fs::current_path() / "backend" / "build" / ".." / ".." / "frontend",
-      fs::current_path() / ".." / "frontend",
-      fs::current_path() / ".." / ".." / "frontend",
+  // 1. 优先尝试挂载 Vue3 编译完成后的 dist 目录
+  const std::vector<fs::path> vueCandidates = {
+      fs::current_path() / "vue-frontend" / "dist",
+      fs::current_path() / ".." / "vue-frontend" / "dist",
+      fs::current_path() / ".." / ".." / "vue-frontend" / "dist",
   };
 
-  for (const auto &candidate : candidates) {
+  for (const auto &candidate : vueCandidates) {
+    std::error_code ec;
+    const fs::path normalized = fs::weakly_canonical(candidate, ec);
+    const fs::path finalPath = ec ? fs::absolute(candidate) : normalized;
+
+    if (fs::exists(finalPath / "index.html")) {
+      return finalPath.lexically_normal().string();
+    }
+  }
+
+  // 2. 如果未找到 Vue3 dist (即未编译)，则回退尝试挂载旧版 frontend_old
+  const std::vector<fs::path> oldCandidates = {
+      fs::current_path() / "frontend_old",
+      fs::current_path() / ".." / "frontend_old",
+      fs::current_path() / ".." / ".." / "frontend_old",
+  };
+
+  for (const auto &candidate : oldCandidates) {
     std::error_code ec;
     const fs::path normalized = fs::weakly_canonical(candidate, ec);
     const fs::path finalPath = ec ? fs::absolute(candidate) : normalized;
