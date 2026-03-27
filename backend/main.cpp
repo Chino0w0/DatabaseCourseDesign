@@ -14,35 +14,27 @@
  *   ./build/community_health_server
  */
 
-// ── 第三方头文件 ──────────────────────────────────────────────
-#if __has_include("include/httplib.h")
-#  include "include/httplib.h"
-#else
-#  include <httplib.h>
-#endif
-
-#if __has_include("include/json.hpp")
-#  include "include/json.hpp"
-#else
-#  include <nlohmann/json.hpp>
-#endif
+// ── 第三方头文件（固定使用项目本地副本，便于 IDE 识别）─────────────
+#include "include/httplib.h"
+#include "include/json.hpp"
 
 // ── 项目内部头文件 ────────────────────────────────────────────
 #include "utils/DatabaseManager.h"
 #include "utils/ResponseHelper.h"
 
 // ── 各模块控制器（逐步取消注释，随模块开发推进）─────────────────
-// #include "controllers/AuthController.h"
-// #include "controllers/UserController.h"
+#include "controllers/AuthController.h"
 #include "controllers/ResidentController.h"
+#include "controllers/UserController.h"
+
 // #include "controllers/HealthController.h"
 // #include "controllers/DiseaseController.h"
 // #include "controllers/VisitController.h"
 
 // ── 标准库 ───────────────────────────────────────────────────
+#include <cstdlib>
 #include <iostream>
 #include <string>
-#include <cstdlib>
 
 using json = nlohmann::json;
 
@@ -56,9 +48,9 @@ using json = nlohmann::json;
  * @param default_val  默认值
  * @return 环境变量的值或默认值
  */
-static std::string getEnv(const char* key, const std::string& default_val) {
-    const char* val = std::getenv(key);
-    return (val != nullptr) ? std::string(val) : default_val;
+static std::string getEnv(const char *key, const std::string &default_val) {
+  const char *val = std::getenv(key);
+  return (val != nullptr) ? std::string(val) : default_val;
 }
 
 // ============================================================
@@ -71,19 +63,20 @@ static std::string getEnv(const char* key, const std::string& default_val) {
 //   export DB_NAME=community_health
 // ============================================================
 static const std::string DB_HOST = getEnv("DB_HOST", "127.0.0.1");
-static const int         DB_PORT = []() {
-    const char* p = std::getenv("DB_PORT");
-    return (p != nullptr) ? std::atoi(p) : 3306;
+static const int DB_PORT = []() {
+  const char *p = std::getenv("DB_PORT");
+  return (p != nullptr) ? std::atoi(p) : 3306;
 }();
 static const std::string DB_USER = getEnv("DB_USER", "ch_admin");
-static const std::string DB_PASS = getEnv("DB_PASS", "");  // 密码必须通过环境变量提供
+static const std::string DB_PASS =
+    getEnv("DB_PASS", ""); // 密码必须通过环境变量提供
 static const std::string DB_NAME = getEnv("DB_NAME", "community_health");
 
 // ============================================================
 // 服务器监听配置
 // ============================================================
 static const std::string SERVER_HOST = "0.0.0.0";
-static const int         SERVER_PORT = 8080;
+static const int SERVER_PORT = 8080;
 
 // ============================================================
 // 注册全局中间件（CORS 预检）
@@ -92,12 +85,13 @@ static const int         SERVER_PORT = 8080;
  * @brief 为服务器实例注册 OPTIONS 预检路由，处理浏览器跨域请求
  * @param svr  cpp-httplib 服务器实例引用
  */
-static void registerCorsHandler(httplib::Server& svr) {
-    // OPTIONS 预检：浏览器在跨域 POST/PUT/DELETE 前会先发 OPTIONS 请求
-    svr.Options(".*", [](const httplib::Request& /*req*/, httplib::Response& res) {
-        ResponseHelper::setCorsHeaders(res);
-        res.status = 204;  // No Content
-    });
+static void registerCorsHandler(httplib::Server &svr) {
+  // OPTIONS 预检：浏览器在跨域 POST/PUT/DELETE 前会先发 OPTIONS 请求
+  svr.Options(".*",
+              [](const httplib::Request & /*req*/, httplib::Response &res) {
+                ResponseHelper::setCorsHeaders(res);
+                res.status = 204; // No Content
+              });
 }
 
 // ============================================================
@@ -107,16 +101,15 @@ static void registerCorsHandler(httplib::Server& svr) {
  * @brief 注册与具体业务模块无关的基础路由（健康检查等）
  * @param svr  cpp-httplib 服务器实例引用
  */
-static void registerSystemRoutes(httplib::Server& svr) {
-    // ── GET /api/v1/health-check ──────────────────────────────
-    // 用于运维 / 前端探测后端服务是否存活
-    svr.Get("/api/v1/health-check",
-            [](const httplib::Request& /*req*/, httplib::Response& res) {
-                ResponseHelper::setCorsHeaders(res);
-                ResponseHelper::ok(res,
-                    json{{"status", "ok"}, {"version", "1.0.0"}},
-                    "服务运行正常");
-            });
+static void registerSystemRoutes(httplib::Server &svr) {
+  // ── GET /api/v1/health-check ──────────────────────────────
+  // 用于运维 / 前端探测后端服务是否存活
+  svr.Get("/api/v1/health-check", [](const httplib::Request & /*req*/,
+                                     httplib::Response &res) {
+    ResponseHelper::setCorsHeaders(res);
+    ResponseHelper::ok(res, json{{"status", "ok"}, {"version", "1.0.0"}},
+                       "服务运行正常");
+  });
 }
 
 // ============================================================
@@ -130,61 +123,63 @@ static void registerSystemRoutes(httplib::Server& svr) {
  *
  * @param svr  cpp-httplib 服务器实例引用
  */
-static void registerBusinessRoutes(httplib::Server& svr) {
-    // 模块 2：用户认证与权限
-    // AuthController::registerRoutes(svr);
-    // UserController::registerRoutes(svr);
+static void registerBusinessRoutes(httplib::Server &svr) {
+  // 模块 2：用户认证与权限
+  AuthController::registerRoutes(svr);
+  UserController::registerRoutes(svr);
 
-    // 模块 3：居民档案（含社区管理）
-    ResidentController::registerRoutes(svr);
+  // 模块 3：居民档案（含社区管理）
+  ResidentController::registerRoutes(svr);
 
-    // 模块 4：健康测量与预警
-    // HealthController::registerRoutes(svr);
+  // 模块 4：健康测量与预警
+  // HealthController::registerRoutes(svr);
 
-    // 模块 5：慢性病管理
-    // DiseaseController::registerRoutes(svr);
+  // 模块 5：慢性病管理
+  // DiseaseController::registerRoutes(svr);
 
-    // 模块 6：随访管理
-    // VisitController::registerRoutes(svr);
+  // 模块 6：随访管理
+  // VisitController::registerRoutes(svr);
 }
 
 // ============================================================
 // main()
 // ============================================================
 int main() {
-    // ── 1. 初始化数据库连接 ────────────────────────────────────
-    try {
-        DatabaseManager::getInstance().init(
-            DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME);
-    } catch (const std::exception& e) {
-        std::cerr << "[错误] 数据库初始化失败: " << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
+  // ── 1. 初始化数据库连接 ────────────────────────────────────
+  try {
+    DatabaseManager::getInstance().init(DB_HOST, DB_PORT, DB_USER, DB_PASS,
+                                        DB_NAME);
+  } catch (const std::exception &e) {
+    std::cerr << "[错误] 数据库初始化失败: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
 
-    // ── 2. 创建 HTTP 服务器实例 ────────────────────────────────
-    httplib::Server svr;
+  // ── 2. 创建 HTTP 服务器实例 ────────────────────────────────
+  httplib::Server svr;
 
-    // ── 3. 注册 CORS 预检处理器 ────────────────────────────────
-    registerCorsHandler(svr);
+  // ── 3. 注册 CORS 预检处理器 ────────────────────────────────
+  registerCorsHandler(svr);
 
-    // ── 4. 注册系统路由 ────────────────────────────────────────
-    registerSystemRoutes(svr);
+  // ── 4. 注册系统路由 ────────────────────────────────────────
+  registerSystemRoutes(svr);
 
-    // ── 5. 注册业务路由 ────────────────────────────────────────
-    registerBusinessRoutes(svr);
+  // ── 5. 注册业务路由 ────────────────────────────────────────
+  registerBusinessRoutes(svr);
 
-    // ── 6. 启动服务器 ─────────────────────────────────────────
-    std::cout << "================================================" << std::endl;
-    std::cout << " 社区健康档案管理系统 — 后端服务器" << std::endl;
-    std::cout << " 监听地址: http://" << SERVER_HOST << ":" << SERVER_PORT << std::endl;
-    std::cout << " API Base: http://localhost:" << SERVER_PORT << "/api/v1" << std::endl;
-    std::cout << "================================================" << std::endl;
+  // ── 6. 启动服务器 ─────────────────────────────────────────
+  std::cout << "================================================" << std::endl;
+  std::cout << " 社区健康档案管理系统 — 后端服务器" << std::endl;
+  std::cout << " 监听地址: http://" << SERVER_HOST << ":" << SERVER_PORT
+            << std::endl;
+  std::cout << " API Base: http://localhost:" << SERVER_PORT << "/api/v1"
+            << std::endl;
+  std::cout << "================================================" << std::endl;
 
-    if (!svr.listen(SERVER_HOST.c_str(), SERVER_PORT)) {
-        std::cerr << "[错误] 服务器启动失败，端口 " << SERVER_PORT
-                  << " 可能已被占用。" << std::endl;
-        return EXIT_FAILURE;
-    }
+  if (!svr.listen(SERVER_HOST.c_str(), SERVER_PORT)) {
+    std::cerr << "[错误] 服务器启动失败，端口 " << SERVER_PORT
+              << " 可能已被占用。" << std::endl;
+    return EXIT_FAILURE;
+  }
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

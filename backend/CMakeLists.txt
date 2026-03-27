@@ -3,6 +3,7 @@ project(community_health_server CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ============================================================
 # 第三方依赖：通过 FetchContent 自动下载（若 include/ 目录中
@@ -28,18 +29,49 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(httplib nlohmann_json)
 
 # ============================================================
-# 查找 MySQL 客户端库（libmysqlclient）
-# Ubuntu/Debian: sudo apt install libmysqlclient-dev
-# CentOS/RHEL:   sudo yum install mysql-devel
+# 查找 MySQL / MariaDB 客户端开发库
+# 优先走 pkg-config；若系统未提供 pkg-config，则回退到 find_path/find_library。
+# Ubuntu/Debian 可安装：default-libmysqlclient-dev 或 libmariadb-dev
 # ============================================================
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(MYSQLCLIENT REQUIRED mysqlclient)
+set(MYSQLCLIENT_INCLUDE_DIRS "")
+set(MYSQLCLIENT_LIBRARIES "")
+set(MYSQLCLIENT_CFLAGS_OTHER "")
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(MYSQLCLIENT QUIET mysqlclient)
+    if(NOT MYSQLCLIENT_FOUND)
+        pkg_check_modules(MYSQLCLIENT QUIET libmariadb)
+    endif()
+endif()
+
+if(NOT MYSQLCLIENT_FOUND)
+    find_path(MYSQLCLIENT_INCLUDE_DIR
+        NAMES mysql/mysql.h mariadb/mysql.h
+        PATH_SUFFIXES include include/mysql include/mariadb mysql mariadb
+    )
+
+    find_library(MYSQLCLIENT_LIBRARY
+        NAMES mysqlclient mariadb libmysqlclient libmariadb
+    )
+
+    if(MYSQLCLIENT_INCLUDE_DIR AND MYSQLCLIENT_LIBRARY)
+        set(MYSQLCLIENT_FOUND TRUE)
+        set(MYSQLCLIENT_INCLUDE_DIRS ${MYSQLCLIENT_INCLUDE_DIR})
+        set(MYSQLCLIENT_LIBRARIES ${MYSQLCLIENT_LIBRARY})
+    endif()
+endif()
+
+if(NOT MYSQLCLIENT_FOUND)
+    message(FATAL_ERROR
+        "未找到 MySQL/MariaDB 客户端开发库。请安装 default-libmysqlclient-dev 或 libmariadb-dev。")
+endif()
 
 # ============================================================
 # 收集全部源文件
-# ============================================================
 # 注意：使用 GLOB（非递归）+ 明确列出 main.cpp，避免 GLOB_RECURSE
 # 将构建目录（build/_deps/...）中的同名文件误收进来。
+# ============================================================
 file(GLOB SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/utils/*.cpp"
@@ -54,6 +86,8 @@ file(GLOB SOURCES
 add_executable(community_health_server ${SOURCES})
 
 target_include_directories(community_health_server PRIVATE
+    # 项目源码根目录（供 controllers/dao/services 跨目录引用头文件）
+    ${CMAKE_CURRENT_SOURCE_DIR}
     # 手动放置的第三方头文件（优先级最高）
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     # MySQL 头文件
