@@ -33,10 +33,13 @@
 
 // ── 标准库 ───────────────────────────────────────────────────
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <string>
+#include <vector>
 
 using json = nlohmann::json;
+namespace fs = std::filesystem;
 
 // ============================================================
 // 数据库连接配置辅助函数
@@ -112,6 +115,47 @@ static void registerSystemRoutes(httplib::Server &svr) {
   });
 }
 
+/**
+ * @brief 解析前端静态目录的实际路径，兼容不同启动目录
+ * @return 可用的 frontend 目录绝对路径；未找到则返回空字符串
+ */
+static std::string resolveFrontendMountPath() {
+  const std::vector<fs::path> candidates = {
+      fs::current_path() / "frontend",
+      fs::current_path() / "backend" / ".." / "frontend",
+      fs::current_path() / "backend" / "build" / ".." / ".." / "frontend",
+      fs::current_path() / ".." / "frontend",
+      fs::current_path() / ".." / ".." / "frontend",
+  };
+
+  for (const auto &candidate : candidates) {
+    std::error_code ec;
+    const fs::path normalized = fs::weakly_canonical(candidate, ec);
+    const fs::path finalPath = ec ? fs::absolute(candidate) : normalized;
+
+    if (fs::exists(finalPath / "pages" / "login.html")) {
+      return finalPath.lexically_normal().string();
+    }
+  }
+
+  return "";
+}
+
+/**
+ * @brief 注册前端入口路由，保证访问根路径时可直接进入登录页
+ * @param svr cpp-httplib 服务器实例引用
+ */
+static void registerFrontendRoutes(httplib::Server &svr) {
+  svr.Get("/", [](const httplib::Request & /*req*/, httplib::Response &res) {
+    res.set_redirect("/pages/login.html");
+  });
+
+  svr.Get("/index.html",
+          [](const httplib::Request & /*req*/, httplib::Response &res) {
+            res.set_redirect("/pages/login.html");
+          });
+}
+
 // ============================================================
 // 注册各业务模块路由
 // ============================================================
@@ -166,7 +210,20 @@ int main() {
   // ── 5. 注册业务路由 ────────────────────────────────────────
   registerBusinessRoutes(svr);
 
-  // ── 6. 启动服务器 ─────────────────────────────────────────
+  // ── 6. 注册前端入口路由 ────────────────────────────────────
+  registerFrontendRoutes(svr);
+
+  // ── 7. 挂载前端静态文件服务 ──────────────────────────────────
+  const std::string frontendMountPath = resolveFrontendMountPath();
+  if (frontendMountPath.empty()) {
+    std::cerr << "[警告] 未找到 frontend 静态目录，页面资源将无法访问。"
+              << std::endl;
+  } else if (!svr.set_mount_point("/", frontendMountPath.c_str())) {
+    std::cerr << "[警告] frontend 静态目录挂载失败: " << frontendMountPath
+              << std::endl;
+  }
+
+  // ── 8. 启动服务器 ─────────────────────────────────────────
   std::cout << "================================================" << std::endl;
   std::cout << " 社区健康档案管理系统 — 后端服务器" << std::endl;
   std::cout << " 监听地址: http://" << SERVER_HOST << ":" << SERVER_PORT

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="社区健康档案管理系统 - 居民管理">
+  <title>居民管理 - 社区健康档案管理系统</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h1>居民管理</h1>
+        <p>管理社区居民档案信息</p>
+      </div>
+
+      <div class="toolbar">
+        <input type="text"   id="searchKeyword" class="search-input" placeholder="🔍 搜索姓名 / 身份证 / 手机号">
+        <select id="filterCommunity" style="max-width:200px;">
+          <option value="0">全部社区</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadResidents()">查询</button>
+        <div class="spacer"></div>
+        <button class="btn btn-primary btn-sm" onclick="openAddResident()">+ 新增居民</button>
+        <button class="btn btn-secondary btn-sm" onclick="openAddCommunity()">+ 新增社区</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>姓名</th>
+              <th>性别</th>
+              <th>身份证号</th>
+              <th>联系电话</th>
+              <th>所属社区</th>
+              <th>建档时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="residentTableBody">
+            <tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </main>
+  </div>
+
+  <!-- 新增/编辑居民 Modal -->
+  <div class="modal-overlay" id="residentModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="residentModalTitle">新增居民</h3>
+        <button class="modal-close" onclick="closeResidentModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editResidentId">
+        <div class="form-row">
+          <div class="form-group">
+            <label>姓名 <span class="required">*</span></label>
+            <input type="text" id="rName" placeholder="居民姓名">
+          </div>
+          <div class="form-group">
+            <label>性别 <span class="required">*</span></label>
+            <select id="rGender">
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>身份证号 <span class="required">*</span></label>
+            <input type="text" id="rIdCard" maxlength="18" placeholder="18位身份证号">
+          </div>
+          <div class="form-group">
+            <label>出生日期 <span class="required">*</span></label>
+            <input type="date" id="rBirthDate">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>联系电话</label>
+            <input type="tel" id="rPhone" placeholder="手机号码">
+          </div>
+          <div class="form-group">
+            <label>所属社区</label>
+            <select id="rCommunityId">
+              <option value="0">未分配</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>详细地址</label>
+          <input type="text" id="rAddress" placeholder="详细住址">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>紧急联系人</label>
+            <input type="text" id="rEmergencyContact" placeholder="紧急联系人姓名">
+          </div>
+          <div class="form-group">
+            <label>紧急联系电话</label>
+            <input type="tel" id="rEmergencyPhone" placeholder="紧急联系人电话">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeResidentModal()">取消</button>
+        <button class="btn btn-primary" id="saveResidentBtn" onclick="saveResident()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增社区 Modal -->
+  <div class="modal-overlay" id="communityModal">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>新增社区</h3>
+        <button class="modal-close" onclick="closeCommunityModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>社区名称 <span class="required">*</span></label>
+          <input type="text" id="cName" placeholder="社区名称">
+        </div>
+        <div class="form-group">
+          <label>地址</label>
+          <input type="text" id="cAddress" placeholder="社区地址">
+        </div>
+        <div class="form-group">
+          <label>联系电话</label>
+          <input type="tel" id="cPhone" placeholder="联系电话">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCommunityModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveCommunity()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 居民详情 Modal -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal" style="max-width:640px;">
+      <div class="modal-header">
+        <h3>居民详情</h3>
+        <button class="modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+      <div class="modal-body" id="detailContent"></div>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/residents.js"></script>
+</body>
+</html>
