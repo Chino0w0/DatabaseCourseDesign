@@ -163,7 +163,7 @@ std::vector<std::string> HealthMeasurementDAO::getWarningMessagesByMeasurementId
         const std::string type = safeStr(row[0]);
         const std::string msg = safeStr(row[1]);
         if (!type.empty() && !msg.empty()) {
-            warnings.push_back(type + "：" + msg);
+            warnings.push_back(type + ": " + msg);
         } else if (!msg.empty()) {
             warnings.push_back(msg);
         } else if (!type.empty()) {
