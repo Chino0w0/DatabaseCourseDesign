@@ -28,8 +28,8 @@
 #include "controllers/ResidentController.h"
 #include "controllers/UserController.h"
 
-// #include "controllers/DiseaseController.h"
-// #include "controllers/VisitController.h"
+#include "controllers/DiseaseController.h"
+#include "controllers/VisitController.h"
 
 // ── 标准库 ───────────────────────────────────────────────────
 #include <cstdlib>
@@ -135,10 +135,10 @@ static void registerBusinessRoutes(httplib::Server &svr) {
   HealthController::registerRoutes(svr);
 
   // 模块 5：慢性病管理
-  // DiseaseController::registerRoutes(svr);
+  DiseaseController::registerRoutes(svr);
 
   // 模块 6：随访管理
-  // VisitController::registerRoutes(svr);
+  VisitController::registerRoutes(svr);
 }
 
 // ============================================================

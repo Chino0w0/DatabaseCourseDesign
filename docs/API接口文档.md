@@ -287,9 +287,12 @@
 {
   "disease_id": 1,
   "diagnosed_date": "2024-06-15",
+  "status": "治疗中",
   "notes": "需长期服药控制"
 }
 ```
+
+> `status` 可选，默认 `治疗中`，仅支持：`治疗中` / `已痊愈` / `控制中`
 
 ### 5.3 获取居民慢性病列表
 
@@ -309,6 +312,8 @@
 | **URL** | `GET /api/v1/visits?resident_id=1` |
 | **描述** | 查询某居民的随访记录 |
 
+> `resident_id` 为必填查询参数。
+
 ### 6.2 新增随访记录
 
 | 项目 | 说明 |
@@ -326,6 +331,8 @@
   "next_visit_date": "2026-04-26"
 }
 ```
+
+> `resident_id` / `visitor_user_id` 必须为正整数，`visit_type` / `visit_date` 为必填字段。
 
 ---
 
