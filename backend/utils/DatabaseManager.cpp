@@ -12,7 +12,8 @@ DatabaseManager::DatabaseManager()
     : conn_(nullptr), initialized_(false), port_(3306) {}
 
 DatabaseManager::~DatabaseManager() {
-  // 程序退出时关闭连接
+  // 持锁后关闭连接，避免与仍在执行的工作线程发生竞态
+  std::lock_guard<std::mutex> lock(mutex_);
   if (conn_) {
     mysql_close(conn_);
     conn_ = nullptr;
