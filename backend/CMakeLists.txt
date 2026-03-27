@@ -130,6 +130,8 @@ add_executable(community_health_tests
     services/VisitService.cpp
     dao/DiseaseDAO.cpp
     dao/VisitLogDAO.cpp
+    dao/UserDAO.cpp
+    services/AuthService.cpp
 )
 
 target_include_directories(community_health_tests PRIVATE
