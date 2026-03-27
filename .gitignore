@@ -1,0 +1,22 @@
+# CMake 构建产物
+backend/build/
+
+# 编译器生成的临时文件
+*.o
+*.d
+*.a
+*.so
+
+# 可执行文件（不提交编译产物）
+backend/build/community_health_server
+backend/build/community_health_tests
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+
+# CLion
+.idea/
+cmake-build-*/
