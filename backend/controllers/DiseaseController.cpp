@@ -1,6 +1,7 @@
 #include "DiseaseController.h"
 
 #include "../services/DiseaseService.h"
+#include "../utils/AuthSessionManager.h"
 #include "../utils/ResponseHelper.h"
 
 #include <cstdlib>
@@ -37,7 +38,9 @@ bool parseJsonBody(const httplib::Request& req, httplib::Response& res, json& bo
 void DiseaseController::registerRoutes(httplib::Server& svr) {
     // GET /api/v1/diseases
     svr.Get("/api/v1/diseases",
-            [](const httplib::Request&, httplib::Response& res) {
+            [](const httplib::Request& req, httplib::Response& res) {
+                auto currentUser = AuthSessionManager::requireUser(req, res);
+                if (!currentUser.has_value()) return;
                 try {
                     DiseaseService svc;
                     json data = svc.getDiseaseList();
@@ -50,6 +53,8 @@ void DiseaseController::registerRoutes(httplib::Server& svr) {
     // GET /api/v1/residents/{id}/diseases
     svr.Get(R"(/api/v1/residents/(\d+)/diseases)",
             [](const httplib::Request& req, httplib::Response& res) {
+                auto currentUser = AuthSessionManager::requireUser(req, res);
+                if (!currentUser.has_value()) return;
                 try {
                     const int resident_id = std::atoi(std::string(req.matches[1]).c_str());
 
@@ -69,6 +74,8 @@ void DiseaseController::registerRoutes(httplib::Server& svr) {
     // POST /api/v1/residents/{id}/diseases
     svr.Post(R"(/api/v1/residents/(\d+)/diseases)",
              [](const httplib::Request& req, httplib::Response& res) {
+                 auto currentUser = AuthSessionManager::requireUser(req, res);
+                 if (!currentUser.has_value()) return;
                  try {
                      const int resident_id = std::atoi(std::string(req.matches[1]).c_str());
                      json body;

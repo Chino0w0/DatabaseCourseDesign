@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="社区健康档案管理系统 - 健康档案">
+  <title>健康档案 - 社区健康档案管理系统</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h1>健康档案</h1>
+        <p>查看居民健康测量数据与档案摘要</p>
+      </div>
+
+      <!-- 居民选择 -->
+      <div class="resident-selector">
+        <label>选择居民：</label>
+        <input type="text" id="residentSearch" placeholder="输入居民姓名搜索..." style="max-width:240px;">
+        <select id="residentSelect" style="max-width:300px;">
+          <option value="">请先搜索居民</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="loadHealthData()">查询</button>
+        <button class="btn btn-secondary btn-sm" onclick="openMeasurementForm()">+ 录入测量数据</button>
+      </div>
+
+      <!-- 选项卡 -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('measurements')">📊 测量记录</button>
+        <button class="tab-btn" onclick="switchTab('record')">📋 档案摘要</button>
+        <button class="tab-btn" onclick="switchTab('diseases')">🩺 慢性病</button>
+      </div>
+
+      <!-- 测量记录 -->
+      <div class="tab-content active" id="tab-measurements">
+        <div id="warningsArea"></div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>测量时间</th>
+                <th>收缩压</th>
+                <th>舒张压</th>
+                <th>血糖</th>
+                <th>心率</th>
+                <th>身高</th>
+                <th>体重</th>
+                <th>BMI</th>
+                <th>测量人</th>
+                <th>预警</th>
+              </tr>
+            </thead>
+            <tbody id="measurementBody">
+              <tr><td colspan="10"><div class="empty-state"><div class="icon">👆</div><h3>请先选择居民</h3></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 档案摘要 -->
+      <div class="tab-content" id="tab-record">
+        <div id="recordContent">
+          <div class="empty-state"><div class="icon">👆</div><h3>请先选择居民</h3></div>
+        </div>
+      </div>
+
+      <!-- 慢性病 -->
+      <div class="tab-content" id="tab-diseases">
+        <div class="toolbar">
+          <div class="spacer"></div>
+          <button class="btn btn-primary btn-sm" onclick="openAddDisease()">+ 关联慢性病</button>
+        </div>
+        <div id="diseaseContent">
+          <div class="empty-state"><div class="icon">👆</div><h3>请先选择居民</h3></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 录入测量数据 Modal -->
+  <div class="modal-overlay" id="measurementModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>录入健康测量数据</h3>
+        <button class="modal-close" onclick="closeMeasurementModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>收缩压 (mmHg)</label>
+            <input type="number" id="mSystolic" placeholder="如 120" min="50" max="300">
+          </div>
+          <div class="form-group">
+            <label>舒张压 (mmHg)</label>
+            <input type="number" id="mDiastolic" placeholder="如 80" min="30" max="200">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>血糖 (mmol/L)</label>
+            <input type="number" id="mBloodSugar" placeholder="如 5.6" step="0.1" min="1" max="40">
+          </div>
+          <div class="form-group">
+            <label>心率 (次/分)</label>
+            <input type="number" id="mHeartRate" placeholder="如 72" min="20" max="260">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>身高 (cm)</label>
+            <input type="number" id="mHeight" placeholder="如 172" step="0.1" min="30" max="260">
+          </div>
+          <div class="form-group">
+            <label>体重 (kg)</label>
+            <input type="number" id="mWeight" placeholder="如 68" step="0.1" min="1" max="500">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea id="mNotes" placeholder="如：晨起空腹测量"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeMeasurementModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveMeasurement()">提交</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关联慢性病 Modal -->
+  <div class="modal-overlay" id="diseaseModal">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>关联慢性病</h3>
+        <button class="modal-close" onclick="closeDiseaseModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>慢性病类型 <span class="required">*</span></label>
+          <select id="dDiseaseId"><option value="">请选择</option></select>
+        </div>
+        <div class="form-group">
+          <label>确诊日期</label>
+          <input type="date" id="dDiagnosedDate">
+        </div>
+        <div class="form-group">
+          <label>状态</label>
+          <select id="dStatus">
+            <option value="治疗中">治疗中</option>
+            <option value="控制中">控制中</option>
+            <option value="已痊愈">已痊愈</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea id="dNotes" placeholder="诊断备注"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDiseaseModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveDisease()">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/health.js"></script>
+</body>
+</html>

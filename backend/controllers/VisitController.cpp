@@ -1,6 +1,7 @@
 #include "VisitController.h"
 
 #include "../services/VisitService.h"
+#include "../utils/AuthSessionManager.h"
 #include "../utils/ResponseHelper.h"
 
 #include <algorithm>
@@ -44,6 +45,8 @@ void VisitController::registerRoutes(httplib::Server& svr) {
     // GET /api/v1/visits?resident_id=1
     svr.Get("/api/v1/visits",
             [](const httplib::Request& req, httplib::Response& res) {
+                auto currentUser = AuthSessionManager::requireUser(req, res);
+                if (!currentUser.has_value()) return;
                 try {
                     if (!req.has_param("resident_id")) {
                         sendFail(res, 400, "缺少必填参数 resident_id");
@@ -67,6 +70,8 @@ void VisitController::registerRoutes(httplib::Server& svr) {
     // POST /api/v1/visits
     svr.Post("/api/v1/visits",
              [](const httplib::Request& req, httplib::Response& res) {
+                 auto currentUser = AuthSessionManager::requireUser(req, res);
+                 if (!currentUser.has_value()) return;
                  try {
                      json body;
                      if (!parseJsonBody(req, res, body)) return;

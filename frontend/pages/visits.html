@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="社区健康档案管理系统 - 随访管理">
+  <title>随访管理 - 社区健康档案管理系统</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h1>随访管理</h1>
+        <p>记录与查看居民随访记录</p>
+      </div>
+
+      <!-- 居民选择 -->
+      <div class="resident-selector">
+        <label>选择居民：</label>
+        <input type="text" id="residentSearch" placeholder="输入居民姓名搜索..." style="max-width:240px;">
+        <select id="residentSelect" style="max-width:300px;">
+          <option value="">请先搜索居民</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="loadVisits()">查询</button>
+        <button class="btn btn-secondary btn-sm" onclick="openAddVisit()">+ 新增随访</button>
+      </div>
+
+      <!-- 随访列表 -->
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>随访日期</th>
+              <th>随访方式</th>
+              <th>随访人员</th>
+              <th>随访内容</th>
+              <th>下次随访日期</th>
+              <th>记录时间</th>
+            </tr>
+          </thead>
+          <tbody id="visitTableBody">
+            <tr><td colspan="7"><div class="empty-state"><div class="icon">👆</div><h3>请先选择居民</h3></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- 新增随访 Modal -->
+  <div class="modal-overlay" id="visitModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>新增随访记录</h3>
+        <button class="modal-close" onclick="closeVisitModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>随访方式 <span class="required">*</span></label>
+            <select id="vVisitType">
+              <option value="上门随访">上门随访</option>
+              <option value="电话随访">电话随访</option>
+              <option value="门诊随访">门诊随访</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>随访日期 <span class="required">*</span></label>
+            <input type="date" id="vVisitDate">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>随访内容</label>
+          <textarea id="vContent" placeholder="请描述随访内容，如：血压复查，情况稳定"></textarea>
+        </div>
+        <div class="form-group">
+          <label>下次随访日期</label>
+          <input type="date" id="vNextVisitDate">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeVisitModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveVisit()">提交</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/visits.js"></script>
+</body>
+</html>
