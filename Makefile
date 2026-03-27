@@ -12,7 +12,7 @@ FRONTEND_PORT ?= 8080
 DB_HOST ?= 127.0.0.1
 DB_PORT ?= 3306
 DB_USER ?= ch_admin
-DB_PASS ?= Admin@2026!
+DB_PASS ?=
 DB_NAME ?= community_health
 
 export DB_HOST DB_PORT DB_USER DB_PASS DB_NAME

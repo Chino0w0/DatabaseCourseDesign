@@ -85,7 +85,7 @@ const handleLogin = () => {
       try {
         const res: any = await request.post('/auth/login', loginForm)
         // 走到这里的必然是 200，因为我们在拦截器里直接把非200的响应 reject 了
-        userStore.setAuth(res.data?.token || 'mock_token', res.data)
+        userStore.setAuth(res.data?.token || '', res.data)
         ElMessage.success(res.msg || '登录成功')
         router.push('/')
       } catch (err: any) {

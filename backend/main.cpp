@@ -161,15 +161,22 @@ static std::string resolveFrontendMountPath() {
  * @brief 注册前端入口路由，保证访问根路径时可直接进入登录页
  * @param svr cpp-httplib 服务器实例引用
  */
-static void registerFrontendRoutes(httplib::Server &svr) {
-  svr.Get("/", [](const httplib::Request & /*req*/, httplib::Response &res) {
-    res.set_redirect("/pages/login.html");
-  });
+static void registerFrontendRoutes(httplib::Server &svr, bool legacyFrontend) {
+  if (legacyFrontend) {
+    svr.Get("/", [](const httplib::Request & /*req*/, httplib::Response &res) {
+      res.set_redirect("/pages/login.html");
+    });
 
-  svr.Get("/index.html",
-          [](const httplib::Request & /*req*/, httplib::Response &res) {
-            res.set_redirect("/pages/login.html");
-          });
+    svr.Get("/index.html",
+            [](const httplib::Request & /*req*/, httplib::Response &res) {
+              res.set_redirect("/pages/login.html");
+            });
+    return;
+  }
+
+  svr.Get("/", [](const httplib::Request & /*req*/, httplib::Response &res) {
+    res.set_redirect("/index.html");
+  });
 }
 
 // ============================================================
@@ -226,11 +233,11 @@ int main() {
   // ── 5. 注册业务路由 ────────────────────────────────────────
   registerBusinessRoutes(svr);
 
-  // ── 6. 注册前端入口路由 ────────────────────────────────────
-  registerFrontendRoutes(svr);
-
-  // ── 7. 挂载前端静态文件服务 ──────────────────────────────────
+  // ── 6. 挂载前端静态文件服务 ──────────────────────────────────
   const std::string frontendMountPath = resolveFrontendMountPath();
+  const bool legacyFrontend =
+      !frontendMountPath.empty() &&
+      fs::exists(fs::path(frontendMountPath) / "pages" / "login.html");
   if (frontendMountPath.empty()) {
     std::cerr << "[警告] 未找到 frontend 静态目录，页面资源将无法访问。"
               << std::endl;
@@ -238,6 +245,9 @@ int main() {
     std::cerr << "[警告] frontend 静态目录挂载失败: " << frontendMountPath
               << std::endl;
   }
+
+  // ── 7. 注册前端入口路由 ────────────────────────────────────
+  registerFrontendRoutes(svr, legacyFrontend);
 
   // ── 8. 启动服务器 ─────────────────────────────────────────
   std::cout << "================================================" << std::endl;

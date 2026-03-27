@@ -7,6 +7,17 @@
 #include <stdexcept>
 #include <string>
 
+namespace {
+int parsePositiveInt(const std::string &value, int fallback) {
+  try {
+    const int parsed = std::stoi(value);
+    return parsed > 0 ? parsed : fallback;
+  } catch (...) {
+    return fallback;
+  }
+}
+} // namespace
+
 // ============================================================
 // 注册所有居民档案及社区路由
 // ============================================================
@@ -77,19 +88,17 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
       std::string keyword;
 
       if (req.has_param("page"))
-        page = std::stoi(req.get_param_value("page"));
+        page = parsePositiveInt(req.get_param_value("page"), 1);
       if (req.has_param("size"))
-        size = std::stoi(req.get_param_value("size"));
+        size = parsePositiveInt(req.get_param_value("size"), 10);
       if (req.has_param("keyword"))
         keyword = req.get_param_value("keyword");
       if (req.has_param("community_id"))
-        community_id = std::stoi(req.get_param_value("community_id"));
+        community_id = parsePositiveInt(req.get_param_value("community_id"), 0);
 
       ResidentService svc;
       json data = svc.getResidentList(page, size, keyword, community_id);
       ResponseHelper::ok(res, data, "查询成功");
-    } catch (const std::invalid_argument &) {
-      ResponseHelper::fail(res, 400, "分页参数必须为整数");
     } catch (const std::exception &e) {
       ResponseHelper::fail(res, 500,
                            std::string("服务器内部错误: ") + e.what());
