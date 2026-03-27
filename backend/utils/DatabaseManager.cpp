@@ -59,10 +59,6 @@ void DatabaseManager::init(const std::string& host, int port,
     // 设置客户端字符集为 utf8mb4，支持中文及 emoji
     mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4");
 
-    // 启用自动重连选项
-    bool reconnect = true;
-    mysql_options(conn_, MYSQL_OPT_RECONNECT, &reconnect);
-
     // 建立连接
     if (!mysql_real_connect(conn_,
                             host_.c_str(),
@@ -105,8 +101,6 @@ MYSQL* DatabaseManager::getConnection() {
             throw std::runtime_error("重连时 mysql_init 失败");
         }
 
-        bool reconnect = true;
-        mysql_options(conn_, MYSQL_OPT_RECONNECT, &reconnect);
         mysql_options(conn_, MYSQL_SET_CHARSET_NAME, "utf8mb4");
 
         if (!mysql_real_connect(conn_,
@@ -172,10 +166,19 @@ void DatabaseManager::execute(const std::string& sql) {
 
 // ============================================================
 // 获取最近一次 INSERT 的自增 ID
+//
+// 注意：不能通过 getConnection() 获取连接，因为 getConnection()
+// 内部会调用 mysql_ping()，而 mysql_ping() 在 MySQL 8.0 中会
+// 重置 mysql_insert_id() 的返回值为 0。
+// 因此直接访问已保存的 conn_ 指针。
 // ============================================================
 
 unsigned long long DatabaseManager::lastInsertId() {
-    return mysql_insert_id(getConnection());
+    if (!initialized_ || !conn_) {
+        throw std::runtime_error("数据库未初始化，请先在 main() 中调用 DatabaseManager::init()");
+    }
+    // 直接调用 mysql_insert_id，不触发 mysql_ping()
+    return mysql_insert_id(conn_);
 }
 
 // ============================================================

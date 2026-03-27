@@ -72,7 +72,48 @@ target_compile_options(community_health_server PRIVATE
 )
 
 # ============================================================
+# 测试目标（CTest 集成）
+# ============================================================
+enable_testing()
+
+add_executable(community_health_tests
+    tests/test_all.cpp
+    utils/DatabaseManager.cpp
+)
+
+target_include_directories(community_health_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${MYSQLCLIENT_INCLUDE_DIRS}
+)
+
+target_link_libraries(community_health_tests PRIVATE
+    httplib::httplib
+    nlohmann_json::nlohmann_json
+    ${MYSQLCLIENT_LIBRARIES}
+)
+
+target_compile_options(community_health_tests PRIVATE
+    ${MYSQLCLIENT_CFLAGS_OTHER}
+    -Wall
+    -Wextra
+    -Wno-unused-parameter
+)
+
+# 注册到 CTest
+add_test(NAME BackendInfraTests COMMAND community_health_tests)
+
+# 透传数据库连接主机/端口/库名等非敏感配置。
+# TEST_DB_PASS（数据库密码）必须在运行测试前通过外部环境变量提供，
+# 例如：export TEST_DB_PASS=<your_password> && ctest
+# 密码请参照 sql/permissions.sql 中 ch_admin 账户的设置。
+set_tests_properties(BackendInfraTests PROPERTIES
+    ENVIRONMENT "TEST_DB_HOST=127.0.0.1;TEST_DB_PORT=3306;TEST_DB_USER=ch_admin;TEST_DB_NAME=community_health"
+)
+
+# ============================================================
 # 构建说明（cmake --build build 后生成 build/community_health_server）
 # ============================================================
 message(STATUS "构建目标: community_health_server")
+message(STATUS "测试目标: community_health_tests")
 message(STATUS "C++ 标准: C++${CMAKE_CXX_STANDARD}")

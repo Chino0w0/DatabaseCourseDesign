@@ -71,6 +71,11 @@ public:
 
     /**
      * @brief 返回最近一次 INSERT 操作的自增 ID
+     *
+     * @note 本函数直接访问内部连接指针，不调用 getConnection()，
+     *       以避免 getConnection() 内的 mysql_ping() 在 MySQL 8.0
+     *       中会将 mysql_insert_id 重置为 0 的问题。
+     *       必须在 init() 成功后使用，并紧跟在 execute(INSERT) 之后调用。
      * @return unsigned long long 自增主键值
      */
     unsigned long long lastInsertId();
@@ -94,7 +99,7 @@ private:
     bool        initialized_;  ///< 是否已完成初始化
     std::mutex  mutex_;        ///< 保护初始化过程的互斥锁
 
-    // 重新连接时所需的配置（保存供 ping 失败后重连使用）
+    // 断线重连时所需的配置
     std::string host_;
     int         port_;
     std::string user_;
