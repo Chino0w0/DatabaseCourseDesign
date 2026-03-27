@@ -68,7 +68,8 @@ void AuthController::registerRoutes(httplib::Server &svr) {
       sendOk(res,
              json{{"user_id", authResult.user.id},
                   {"username", authResult.user.username},
-                  {"role", authResult.user.roleName}},
+                  {"role", authResult.user.roleName},
+                  {"token", authResult.token}},
              authResult.msg);
     } catch (const std::exception &e) {
       sendFail(res, 500, std::string("登录失败: ") + e.what());

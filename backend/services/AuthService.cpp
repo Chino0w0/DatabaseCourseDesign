@@ -1,6 +1,7 @@
 #include "../services/AuthService.h"
 
 #include "../dao/UserDAO.h"
+#include "../utils/AuthSessionManager.h"
 
 AuthResult AuthService::login(const std::string &username,
                               const std::string &password) const {
@@ -30,6 +31,7 @@ AuthResult AuthService::login(const std::string &username,
   result.success = true;
   result.code = 200;
   result.msg = "登录成功";
+  result.token = AuthSessionManager::issueToken(user);
   result.user = user;
   return result;
 }

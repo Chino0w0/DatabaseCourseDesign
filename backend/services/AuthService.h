@@ -11,6 +11,7 @@ struct AuthResult {
   bool success = false;
   int code = 401;
   std::string msg = "用户名或密码错误";
+  std::string token;
   User user;
 };
 

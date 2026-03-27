@@ -2,6 +2,7 @@
 
 #include "dao/RoleDAO.h"
 #include "dao/UserDAO.h"
+#include "utils/AuthSessionManager.h"
 #include "utils/ResponseHelper.h"
 
 #include <algorithm>
@@ -53,6 +54,8 @@ int parsePositiveInt(const std::string &value, int fallback) {
   return parsed > 0 ? parsed : fallback;
 }
 
+const std::vector<int> kAdminRoleIds{1};
+
 json userToJson(const User &user) {
   return json{{"id", user.id},
               {"username", user.username},
@@ -72,6 +75,11 @@ json userToJson(const User &user) {
 void UserController::registerRoutes(httplib::Server &svr) {
   svr.Get("/api/v1/users", [](const httplib::Request &req,
                               httplib::Response &res) {
+    auto currentUser = AuthSessionManager::requireUser(req, res, kAdminRoleIds);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
     try {
       const int page = req.has_param("page")
                            ? parsePositiveInt(req.get_param_value("page"), 1)
@@ -102,6 +110,11 @@ void UserController::registerRoutes(httplib::Server &svr) {
 
   svr.Post("/api/v1/users", [](const httplib::Request &req,
                                httplib::Response &res) {
+    auto currentUser = AuthSessionManager::requireUser(req, res, kAdminRoleIds);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
     try {
       json body;
       if (!parseJsonBody(req, res, body)) {
@@ -166,6 +179,11 @@ void UserController::registerRoutes(httplib::Server &svr) {
 
   svr.Put(R"(/api/v1/users/(\d+))", [](const httplib::Request &req,
                                        httplib::Response &res) {
+    auto currentUser = AuthSessionManager::requireUser(req, res, kAdminRoleIds);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
     try {
       const int userId = std::atoi(std::string(req.matches[1]).c_str());
       json body;
@@ -251,6 +269,10 @@ void UserController::registerRoutes(httplib::Server &svr) {
         return;
       }
 
+      if (updatedUser->status != 1) {
+        AuthSessionManager::revokeUserTokens(userId);
+      }
+
       sendOk(res, userToJson(*updatedUser), "更新用户成功");
     } catch (const std::exception &e) {
       sendFail(res, 500, std::string("更新用户失败: ") + e.what());
@@ -259,6 +281,11 @@ void UserController::registerRoutes(httplib::Server &svr) {
 
   svr.Delete(R"(/api/v1/users/(\d+))", [](const httplib::Request &req,
                                           httplib::Response &res) {
+    auto currentUser = AuthSessionManager::requireUser(req, res, kAdminRoleIds);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
     try {
       const int userId = std::atoi(std::string(req.matches[1]).c_str());
       UserDAO userDao;
@@ -267,6 +294,7 @@ void UserController::registerRoutes(httplib::Server &svr) {
         return;
       }
 
+      AuthSessionManager::revokeUserTokens(userId);
       sendOk(res, json{{"id", userId}, {"status", 0}}, "删除用户成功");
     } catch (const std::exception &e) {
       sendFail(res, 500, std::string("删除用户失败: ") + e.what());
