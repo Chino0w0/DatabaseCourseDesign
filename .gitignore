@@ -20,3 +20,8 @@ backend/build/community_health_tests
 # CLion
 .idea/
 cmake-build-*/
+
+# 本地测试/工具生成文件
+compile_flags.txt
+backend/compile_flags.txt
+copy_mysql.py
