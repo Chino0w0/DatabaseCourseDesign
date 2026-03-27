@@ -67,6 +67,17 @@ if(NOT MYSQLCLIENT_FOUND)
         "未找到 MySQL/MariaDB 客户端开发库。请安装 default-libmysqlclient-dev 或 libmariadb-dev。")
 endif()
 
+# 某些环境下 pkg_check_modules 只填充了 pkgcfg_lib_*，导致
+# MYSQLCLIENT_LIBRARIES 为空，进而链接阶段缺少 -lmysqlclient。
+# 这里做一次兜底，保证可执行文件稳定链接。
+if(MYSQLCLIENT_FOUND AND "${MYSQLCLIENT_LIBRARIES}" STREQUAL "")
+    if(DEFINED pkgcfg_lib_MYSQLCLIENT_mysqlclient)
+        set(MYSQLCLIENT_LIBRARIES ${pkgcfg_lib_MYSQLCLIENT_mysqlclient})
+    elseif(DEFINED pkgcfg_lib_MYSQLCLIENT_libmariadb)
+        set(MYSQLCLIENT_LIBRARIES ${pkgcfg_lib_MYSQLCLIENT_libmariadb})
+    endif()
+endif()
+
 # ============================================================
 # 收集全部源文件
 # 注意：使用 GLOB（非递归）+ 明确列出 main.cpp，避免 GLOB_RECURSE

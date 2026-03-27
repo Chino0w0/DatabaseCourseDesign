@@ -24,10 +24,10 @@
 
 // ── 各模块控制器（逐步取消注释，随模块开发推进）─────────────────
 #include "controllers/AuthController.h"
+#include "controllers/HealthController.h"
 #include "controllers/ResidentController.h"
 #include "controllers/UserController.h"
 
-// #include "controllers/HealthController.h"
 // #include "controllers/DiseaseController.h"
 // #include "controllers/VisitController.h"
 
@@ -132,7 +132,7 @@ static void registerBusinessRoutes(httplib::Server &svr) {
   ResidentController::registerRoutes(svr);
 
   // 模块 4：健康测量与预警
-  // HealthController::registerRoutes(svr);
+  HealthController::registerRoutes(svr);
 
   // 模块 5：慢性病管理
   // DiseaseController::registerRoutes(svr);
