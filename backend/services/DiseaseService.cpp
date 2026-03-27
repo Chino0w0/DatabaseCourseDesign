@@ -4,6 +4,11 @@
 
 namespace {
 
+const char* const kDefaultStatus = "治疗中";
+const char* const kStatusTreating = "治疗中";
+const char* const kStatusRecovered = "已痊愈";
+const char* const kStatusControlled = "控制中";
+
 json diseaseToJson(const ChronicDisease& d) {
     return json{
         {"id", d.id},
@@ -29,7 +34,7 @@ json residentDiseaseToJson(const ResidentDisease& d) {
 }
 
 bool validStatus(const std::string& status) {
-    return status == "治疗中" || status == "已痊愈" || status == "控制中";
+    return status == kStatusTreating || status == kStatusRecovered || status == kStatusControlled;
 }
 
 } // namespace
@@ -66,7 +71,7 @@ json DiseaseService::addResidentDisease(int resident_id, const json& body) {
         diagnosed_date = body["diagnosed_date"].get<std::string>();
     }
 
-    std::string status = body.value("status", std::string("治疗中"));
+    std::string status = body.value("status", std::string(kDefaultStatus));
     if (!validStatus(status)) {
         return json{{"error", "status 仅支持: 治疗中/已痊愈/控制中"}};
     }

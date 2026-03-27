@@ -8,6 +8,26 @@ std::string safeStr(const char* s) {
     return (s != nullptr) ? std::string(s) : std::string();
 }
 
+enum DiseaseColumns {
+    COL_DISEASE_ID = 0,
+    COL_DISEASE_NAME,
+    COL_DISEASE_CODE,
+    COL_DISEASE_CATEGORY,
+    COL_DISEASE_DESCRIPTION
+};
+
+enum ResidentDiseaseColumns {
+    COL_RD_ID = 0,
+    COL_RD_RESIDENT_ID,
+    COL_RD_DISEASE_ID,
+    COL_RD_DISEASE_NAME,
+    COL_RD_DISEASE_CODE,
+    COL_RD_CATEGORY,
+    COL_RD_DIAGNOSED_DATE,
+    COL_RD_STATUS,
+    COL_RD_NOTES
+};
+
 } // namespace
 
 std::vector<ChronicDisease> DiseaseDAO::listDiseases() {
@@ -22,11 +42,11 @@ std::vector<ChronicDisease> DiseaseDAO::listDiseases() {
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(res)) != nullptr) {
         ChronicDisease d;
-        d.id = row[0] ? std::stoi(row[0]) : 0;
-        d.disease_name = safeStr(row[1]);
-        d.disease_code = safeStr(row[2]);
-        d.category = safeStr(row[3]);
-        d.description = safeStr(row[4]);
+        d.id = row[COL_DISEASE_ID] ? std::stoi(row[COL_DISEASE_ID]) : 0;
+        d.disease_name = safeStr(row[COL_DISEASE_NAME]);
+        d.disease_code = safeStr(row[COL_DISEASE_CODE]);
+        d.category = safeStr(row[COL_DISEASE_CATEGORY]);
+        d.description = safeStr(row[COL_DISEASE_DESCRIPTION]);
         list.push_back(d);
     }
 
@@ -50,15 +70,15 @@ std::vector<ResidentDisease> DiseaseDAO::listResidentDiseases(int resident_id) {
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(res)) != nullptr) {
         ResidentDisease d;
-        d.id = row[0] ? std::stoi(row[0]) : 0;
-        d.resident_id = row[1] ? std::stoi(row[1]) : 0;
-        d.disease_id = row[2] ? std::stoi(row[2]) : 0;
-        d.disease_name = safeStr(row[3]);
-        d.disease_code = safeStr(row[4]);
-        d.category = safeStr(row[5]);
-        d.diagnosed_date = safeStr(row[6]);
-        d.status = safeStr(row[7]);
-        d.notes = safeStr(row[8]);
+        d.id = row[COL_RD_ID] ? std::stoi(row[COL_RD_ID]) : 0;
+        d.resident_id = row[COL_RD_RESIDENT_ID] ? std::stoi(row[COL_RD_RESIDENT_ID]) : 0;
+        d.disease_id = row[COL_RD_DISEASE_ID] ? std::stoi(row[COL_RD_DISEASE_ID]) : 0;
+        d.disease_name = safeStr(row[COL_RD_DISEASE_NAME]);
+        d.disease_code = safeStr(row[COL_RD_DISEASE_CODE]);
+        d.category = safeStr(row[COL_RD_CATEGORY]);
+        d.diagnosed_date = safeStr(row[COL_RD_DIAGNOSED_DATE]);
+        d.status = safeStr(row[COL_RD_STATUS]);
+        d.notes = safeStr(row[COL_RD_NOTES]);
         list.push_back(d);
     }
 

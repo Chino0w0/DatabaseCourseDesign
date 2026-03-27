@@ -8,6 +8,18 @@ std::string safeStr(const char* s) {
     return (s != nullptr) ? std::string(s) : std::string();
 }
 
+enum VisitLogColumns {
+    COL_VISIT_ID = 0,
+    COL_VISIT_RESIDENT_ID,
+    COL_VISIT_VISITOR_USER_ID,
+    COL_VISIT_VISITOR_NAME,
+    COL_VISIT_TYPE,
+    COL_VISIT_DATE,
+    COL_VISIT_CONTENT,
+    COL_VISIT_NEXT_DATE,
+    COL_VISIT_CREATED_AT
+};
+
 } // namespace
 
 std::vector<VisitLog> VisitLogDAO::listByResidentId(int resident_id) {
@@ -27,15 +39,15 @@ std::vector<VisitLog> VisitLogDAO::listByResidentId(int resident_id) {
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(res)) != nullptr) {
         VisitLog log;
-        log.id = row[0] ? std::stoi(row[0]) : 0;
-        log.resident_id = row[1] ? std::stoi(row[1]) : 0;
-        log.visitor_user_id = row[2] ? std::stoi(row[2]) : 0;
-        log.visitor_name = safeStr(row[3]);
-        log.visit_type = safeStr(row[4]);
-        log.visit_date = safeStr(row[5]);
-        log.content = safeStr(row[6]);
-        log.next_visit_date = safeStr(row[7]);
-        log.created_at = safeStr(row[8]);
+        log.id = row[COL_VISIT_ID] ? std::stoi(row[COL_VISIT_ID]) : 0;
+        log.resident_id = row[COL_VISIT_RESIDENT_ID] ? std::stoi(row[COL_VISIT_RESIDENT_ID]) : 0;
+        log.visitor_user_id = row[COL_VISIT_VISITOR_USER_ID] ? std::stoi(row[COL_VISIT_VISITOR_USER_ID]) : 0;
+        log.visitor_name = safeStr(row[COL_VISIT_VISITOR_NAME]);
+        log.visit_type = safeStr(row[COL_VISIT_TYPE]);
+        log.visit_date = safeStr(row[COL_VISIT_DATE]);
+        log.content = safeStr(row[COL_VISIT_CONTENT]);
+        log.next_visit_date = safeStr(row[COL_VISIT_NEXT_DATE]);
+        log.created_at = safeStr(row[COL_VISIT_CREATED_AT]);
         list.push_back(log);
     }
 
