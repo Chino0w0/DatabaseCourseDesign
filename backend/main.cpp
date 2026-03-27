@@ -24,12 +24,12 @@
 
 // ── 各模块控制器（逐步取消注释，随模块开发推进）─────────────────
 #include "controllers/AuthController.h"
+#include "controllers/ResidentController.h"
 #include "controllers/UserController.h"
-// #include "controllers/ResidentController.h"
+
 // #include "controllers/HealthController.h"
 // #include "controllers/DiseaseController.h"
 // #include "controllers/VisitController.h"
-// #include "controllers/CommunityController.h"
 
 // ── 标准库 ───────────────────────────────────────────────────
 #include <cstdlib>
@@ -128,8 +128,8 @@ static void registerBusinessRoutes(httplib::Server &svr) {
   AuthController::registerRoutes(svr);
   UserController::registerRoutes(svr);
 
-  // 模块 3：居民档案
-  // ResidentController::registerRoutes(svr);
+  // 模块 3：居民档案（含社区管理）
+  ResidentController::registerRoutes(svr);
 
   // 模块 4：健康测量与预警
   // HealthController::registerRoutes(svr);
@@ -139,9 +139,6 @@ static void registerBusinessRoutes(httplib::Server &svr) {
 
   // 模块 6：随访管理
   // VisitController::registerRoutes(svr);
-
-  // 模块 7（社区信息）
-  // CommunityController::registerRoutes(svr);
 }
 
 // ============================================================

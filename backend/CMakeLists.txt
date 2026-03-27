@@ -68,18 +68,16 @@ if(NOT MYSQLCLIENT_FOUND)
 endif()
 
 # ============================================================
-# 显式列出源文件
-# 说明：避免在源码目录内创建 build/ 时，递归扫描误将生成目录中的
-# 中间文件或第三方依赖目录纳入构建，导致重复编译或异常依赖。
+# 收集全部源文件
+# 注意：使用 GLOB（非递归）+ 明确列出 main.cpp，避免 GLOB_RECURSE
+# 将构建目录（build/_deps/...）中的同名文件误收进来。
 # ============================================================
-set(SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/utils/DatabaseManager.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/dao/RoleDAO.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/dao/UserDAO.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/services/AuthService.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/controllers/AuthController.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/controllers/UserController.cpp
+file(GLOB SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/utils/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dao/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/services/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/controllers/*.cpp"
 )
 
 # ============================================================

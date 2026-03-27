@@ -1,8 +1,9 @@
-#include "../models/Role.h"
+#include "RoleDAO.h"
 
 #include "../utils/DatabaseManager.h"
 
 #include <cstdlib>
+#include <string>
 
 namespace {
 
