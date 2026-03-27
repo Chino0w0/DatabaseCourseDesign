@@ -19,12 +19,15 @@
       <!-- 居民选择 -->
       <div class="resident-selector">
         <label>选择居民：</label>
-        <input type="text" id="residentSearch" placeholder="输入居民姓名搜索..." style="max-width:240px;">
+        <div class="search-input-wrapper" style="max-width:240px;">
+          <script>document.write(window.Icons.search)</script>
+          <input type="text" id="residentSearch" class="search-input" placeholder="输入居民姓名搜索...">
+        </div>
         <select id="residentSelect" style="max-width:300px;">
           <option value="">请先搜索居民</option>
         </select>
         <button class="btn btn-primary btn-sm" onclick="loadVisits()">查询</button>
-        <button class="btn btn-secondary btn-sm" onclick="openAddVisit()">+ 新增随访</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddVisit()"><script>document.write(window.Icons.plus)</script> 记录随访</button>
       </div>
 
       <!-- 随访列表 -->
@@ -87,6 +90,7 @@
     </div>
   </div>
 
+  <script src="../js/icons.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/visits.js"></script>
 </body>

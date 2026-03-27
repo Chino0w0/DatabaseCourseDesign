@@ -27,3 +27,10 @@ backend/compile_flags.txt
 copy_mysql.py
 backend/Testing/
 .run/
+
+# Playwright / 前端联调用临时产物
+node_modules/
+test-results/
+plans/frontend-vue-test-report.json
+package.json
+package-lock.json

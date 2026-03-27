@@ -18,47 +18,47 @@
 
       <div class="stats-grid" id="statsGrid">
         <div class="stat-card">
-          <div class="stat-icon">👥</div>
+          <div class="stat-icon"><script>document.write(window.Icons.residents)</script></div>
           <div class="stat-value" id="statResidents">--</div>
           <div class="stat-label">居民总数</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">🏘️</div>
+          <div class="stat-icon"><script>document.write(window.Icons.building)</script></div>
           <div class="stat-value" id="statCommunities">--</div>
           <div class="stat-label">社区数量</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">🩺</div>
+          <div class="stat-icon"><script>document.write(window.Icons.stethoscope)</script></div>
           <div class="stat-value" id="statDiseases">--</div>
           <div class="stat-label">慢性病类型</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">🔒</div>
+          <div class="stat-icon"><script>document.write(window.Icons.shield)</script></div>
           <div class="stat-value" id="statStatus">在线</div>
           <div class="stat-label">系统状态</div>
         </div>
       </div>
 
       <div class="detail-panel">
-        <h3>📋 快捷操作</h3>
+        <h3><script>document.write(window.Icons.dashboard)</script> 快捷操作</h3>
         <div class="stats-grid" style="margin-bottom: 0;">
           <a href="/pages/residents.html" class="stat-card" style="cursor:pointer; text-decoration:none; color:inherit;">
-            <div class="stat-icon">➕</div>
+            <div class="stat-icon"><script>document.write(window.Icons.plus)</script></div>
             <div class="stat-label">新增居民</div>
           </a>
           <a href="/pages/health.html" class="stat-card" style="cursor:pointer; text-decoration:none; color:inherit;">
-            <div class="stat-icon">📝</div>
+            <div class="stat-icon"><script>document.write(window.Icons.health)</script></div>
             <div class="stat-label">录入健康数据</div>
           </a>
           <a href="/pages/visits.html" class="stat-card" style="cursor:pointer; text-decoration:none; color:inherit;">
-            <div class="stat-icon">📅</div>
+            <div class="stat-icon"><script>document.write(window.Icons.visits)</script></div>
             <div class="stat-label">记录随访</div>
           </a>
         </div>
       </div>
 
       <div class="detail-panel">
-        <h3>📢 最近活动</h3>
+        <h3><script>document.write(window.Icons.visits)</script> 最近活动</h3>
         <div id="recentActivity">
           <div class="loading"><div class="spinner"></div></div>
         </div>
@@ -66,6 +66,7 @@
     </main>
   </div>
 
+  <script src="../js/icons.js"></script>
   <script src="../js/api.js"></script>
   <script>
     (function() {
@@ -113,7 +114,7 @@
             for (const r of residents.data.list) {
               html += `
                 <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-color);">
-                  <span style="font-size:1.2rem;">👤</span>
+                  <span style="display:flex;align-items:center;color:var(--accent-primary);width:24px;height:24px;">${window.Icons.residents}</span>
                   <div style="flex:1;">
                     <div style="font-size:0.9rem;">${r.name} — ${r.community_name || '未分配社区'}</div>
                     <div style="font-size:0.78rem;color:var(--text-muted);">建档时间: ${r.created_at || '未知'}</div>
@@ -124,10 +125,10 @@
             html += '</div>';
             el.innerHTML = html;
           } else {
-            el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><h3>暂无活动记录</h3></div>';
+            el.innerHTML = '<div class="empty-state"><div class="icon">' + window.Icons.empty + '</div><h3>暂无活动记录</h3></div>';
           }
         } catch (e) {
-          el.innerHTML = '<div class="empty-state"><div class="icon">❌</div><h3>加载失败</h3></div>';
+          el.innerHTML = '<div class="empty-state"><div class="icon">' + window.Icons.error + '</div><h3>加载失败</h3></div>';
         }
       }
 

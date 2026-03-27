@@ -17,14 +17,17 @@
       </div>
 
       <div class="toolbar">
-        <input type="text"   id="searchKeyword" class="search-input" placeholder="🔍 搜索姓名 / 身份证 / 手机号">
+        <div class="search-input-wrapper">
+          <script>document.write(window.Icons.search)</script>
+          <input type="text" id="searchKeyword" class="search-input" placeholder="搜索姓名 / 身份证 / 手机号">
+        </div>
         <select id="filterCommunity" style="max-width:200px;">
           <option value="0">全部社区</option>
         </select>
         <button class="btn btn-secondary btn-sm" onclick="loadResidents()">查询</button>
         <div class="spacer"></div>
-        <button class="btn btn-primary btn-sm" onclick="openAddResident()">+ 新增居民</button>
-        <button class="btn btn-secondary btn-sm" onclick="openAddCommunity()">+ 新增社区</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddResident()"><script>document.write(window.Icons.plus)</script> 新增居民</button>
+        <button class="btn btn-secondary btn-sm" onclick="openAddCommunity()"><script>document.write(window.Icons.plus)</script> 新增社区</button>
       </div>
 
       <div class="table-wrapper">
@@ -155,6 +158,7 @@
     </div>
   </div>
 
+  <script src="../js/icons.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/residents.js"></script>
 </body>
