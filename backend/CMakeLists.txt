@@ -38,7 +38,9 @@ pkg_check_modules(MYSQLCLIENT REQUIRED mysqlclient)
 # ============================================================
 # 收集全部源文件
 # ============================================================
-file(GLOB_RECURSE SOURCES
+# 注意：使用 GLOB（非递归）+ 明确列出 main.cpp，避免 GLOB_RECURSE
+# 将构建目录（build/_deps/...）中的同名文件误收进来。
+file(GLOB SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/utils/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/dao/*.cpp"
