@@ -191,6 +191,7 @@
 |------|------|
 | **URL** | `GET /api/v1/health/measurements?resident_id=1` |
 | **描述** | 查询某位居民的历史测量数据 |
+| **可选参数** | `limit`（默认 50，最大 200） |
 
 **成功响应**：
 
@@ -202,15 +203,19 @@
     {
       "id": 1,
       "resident_id": 1,
-      "measurement_type": "血压",
       "systolic": 135,
       "diastolic": 88,
-      "blood_sugar": null,
+      "blood_sugar": 5.6,
       "heart_rate": 72,
+      "height": 172.0,
+      "weight": 68.0,
+      "bmi": 23.0,
+      "notes": "晨起空腹测量",
+      "measured_by_user_id": 2,
       "measured_at": "2026-03-25 10:30:00",
       "measured_by": "张医生",
       "warning": true,
-      "warning_msg": "收缩压偏高，建议复查"
+      "warning_msg": ["高血压：收缩压: 135 mmHg, 舒张压: 88 mmHg"]
     }
   ]
 }
@@ -240,6 +245,25 @@
 |------|------|
 | **URL** | `GET /api/v1/health/records/{resident_id}` |
 | **描述** | 获取居民的健康档案摘要 |
+
+**成功响应**：
+
+```json
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "id": 10,
+    "resident_id": 1,
+    "blood_type": "A",
+    "allergy_history": null,
+    "family_history": null,
+    "past_medical_history": null,
+    "created_at": "2026-03-20 09:00:00",
+    "updated_at": "2026-03-26 18:00:00"
+  }
+}
+```
 
 ---
 
