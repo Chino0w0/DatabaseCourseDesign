@@ -1,1 +1,0 @@
-/usr/bin/c++ -g -Wl,--dependency-file=CMakeFiles/community_health_tests.dir/link.d CMakeFiles/community_health_tests.dir/tests/test_all.cpp.o CMakeFiles/community_health_tests.dir/utils/DatabaseManager.cpp.o -o community_health_tests  -lmysqlclient /usr/lib/x86_64-linux-gnu/libz.so /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so
