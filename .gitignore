@@ -25,3 +25,4 @@ cmake-build-*/
 compile_flags.txt
 backend/compile_flags.txt
 copy_mysql.py
+backend/Testing/

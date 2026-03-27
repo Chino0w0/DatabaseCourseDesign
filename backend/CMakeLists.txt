@@ -126,6 +126,10 @@ enable_testing()
 add_executable(community_health_tests
     tests/test_all.cpp
     utils/DatabaseManager.cpp
+    services/DiseaseService.cpp
+    services/VisitService.cpp
+    dao/DiseaseDAO.cpp
+    dao/VisitLogDAO.cpp
     dao/UserDAO.cpp
     services/AuthService.cpp
 )
