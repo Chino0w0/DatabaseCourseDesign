@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <exception>
 #include <iostream>
 #include <string>
 
