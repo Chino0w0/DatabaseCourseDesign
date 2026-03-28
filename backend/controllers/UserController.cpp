@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <exception>
+#include <iostream>
 #include <optional>
 #include <string>
 #include <vector>
@@ -23,6 +24,10 @@ void sendOk(httplib::Response &res, const json &data,
 void sendFail(httplib::Response &res, int code, const std::string &msg) {
   ResponseHelper::setCorsHeaders(res);
   ResponseHelper::fail(res, code, msg);
+}
+
+void logServerError(const char *context, const std::exception &e) {
+  std::cerr << "[UserController] " << context << ": " << e.what() << std::endl;
 }
 
 bool parseJsonBody(const httplib::Request &req, httplib::Response &res,
@@ -104,7 +109,8 @@ void UserController::registerRoutes(httplib::Server &svr) {
               {"total", total}, {"page", page}, {"size", size}, {"list", list}},
           "查询成功");
     } catch (const std::exception &e) {
-      sendFail(res, 500, std::string("查询用户列表失败: ") + e.what());
+      logServerError("listUsers", e);
+      sendFail(res, 500, "查询用户列表失败，请稍后重试");
     }
   });
 
@@ -173,7 +179,8 @@ void UserController::registerRoutes(httplib::Server &svr) {
 
       sendOk(res, userToJson(*newUser), "创建用户成功");
     } catch (const std::exception &e) {
-      sendFail(res, 500, std::string("创建用户失败: ") + e.what());
+      logServerError("createUser", e);
+      sendFail(res, 500, "创建用户失败，请稍后重试");
     }
   });
 
@@ -275,7 +282,8 @@ void UserController::registerRoutes(httplib::Server &svr) {
 
       sendOk(res, userToJson(*updatedUser), "更新用户成功");
     } catch (const std::exception &e) {
-      sendFail(res, 500, std::string("更新用户失败: ") + e.what());
+      logServerError("updateUser", e);
+      sendFail(res, 500, "更新用户失败，请稍后重试");
     }
   });
 
@@ -297,7 +305,8 @@ void UserController::registerRoutes(httplib::Server &svr) {
       AuthSessionManager::revokeUserTokens(userId);
       sendOk(res, json{{"id", userId}, {"status", 0}}, "删除用户成功");
     } catch (const std::exception &e) {
-      sendFail(res, 500, std::string("删除用户失败: ") + e.what());
+      logServerError("deleteUser", e);
+      sendFail(res, 500, "删除用户失败，请稍后重试");
     }
   });
 }

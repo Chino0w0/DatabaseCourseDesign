@@ -78,8 +78,16 @@ static const std::string DB_NAME = getEnv("DB_NAME", "community_health");
 // ============================================================
 // 服务器监听配置
 // ============================================================
-static const std::string SERVER_HOST = "0.0.0.0";
-static const int SERVER_PORT = 8080;
+static const std::string SERVER_HOST = getEnv("HOST", "0.0.0.0");
+static const int SERVER_PORT = []() {
+  const char *p = std::getenv("PORT");
+  if (p == nullptr) {
+    return 8080;
+  }
+
+  const int port = std::atoi(p);
+  return port > 0 ? port : 8080;
+}();
 
 // ============================================================
 // 注册全局中间件（CORS 预检）
@@ -115,11 +123,22 @@ static void registerSystemRoutes(httplib::Server &svr) {
   });
 }
 
+enum class FrontendMountType {
+  None,
+  VueDist,
+  LegacyStatic,
+};
+
+struct FrontendMountInfo {
+  FrontendMountType type = FrontendMountType::None;
+  std::string path;
+};
+
 /**
  * @brief 解析前端静态目录的实际路径，兼容不同启动目录
- * @return 可用的 frontend 目录绝对路径；未找到则返回空字符串
+ * @return 前端挂载信息；未找到则 type 为 None
  */
-static std::string resolveFrontendMountPath() {
+static FrontendMountInfo resolveFrontendMountInfo() {
   // 1. 优先尝试挂载 Vue3 编译完成后的 dist 目录
   const std::vector<fs::path> vueCandidates = {
       fs::current_path() / "vue-frontend" / "dist",
@@ -133,7 +152,8 @@ static std::string resolveFrontendMountPath() {
     const fs::path finalPath = ec ? fs::absolute(candidate) : normalized;
 
     if (fs::exists(finalPath / "index.html")) {
-      return finalPath.lexically_normal().string();
+      return {FrontendMountType::VueDist,
+              finalPath.lexically_normal().string()};
     }
   }
 
@@ -150,26 +170,38 @@ static std::string resolveFrontendMountPath() {
     const fs::path finalPath = ec ? fs::absolute(candidate) : normalized;
 
     if (fs::exists(finalPath / "pages" / "login.html")) {
-      return finalPath.lexically_normal().string();
+      return {FrontendMountType::LegacyStatic,
+              finalPath.lexically_normal().string()};
     }
   }
 
-  return "";
+  return {};
 }
 
 /**
- * @brief 注册前端入口路由，保证访问根路径时可直接进入登录页
+ * @brief 注册前端入口路由，保证访问根路径时可直接进入正确前端入口
  * @param svr cpp-httplib 服务器实例引用
+ * @param mountType 当前挂载的前端类型
  */
-static void registerFrontendRoutes(httplib::Server &svr) {
-  svr.Get("/", [](const httplib::Request & /*req*/, httplib::Response &res) {
-    res.set_redirect("/pages/login.html");
-  });
+static void registerFrontendRoutes(httplib::Server &svr,
+                                   FrontendMountType mountType) {
+  if (mountType == FrontendMountType::LegacyStatic) {
+    svr.Get("/", [](const httplib::Request & /*req*/, httplib::Response &res) {
+      res.set_redirect("/pages/login.html");
+    });
 
-  svr.Get("/index.html",
-          [](const httplib::Request & /*req*/, httplib::Response &res) {
-            res.set_redirect("/pages/login.html");
-          });
+    svr.Get("/index.html",
+            [](const httplib::Request & /*req*/, httplib::Response &res) {
+              res.set_redirect("/pages/login.html");
+            });
+    return;
+  }
+
+  if (mountType == FrontendMountType::VueDist) {
+    svr.Get("/", [](const httplib::Request & /*req*/, httplib::Response &res) {
+      res.set_redirect("/index.html");
+    });
+  }
 }
 
 // ============================================================
@@ -227,15 +259,18 @@ int main() {
   registerBusinessRoutes(svr);
 
   // ── 6. 注册前端入口路由 ────────────────────────────────────
-  registerFrontendRoutes(svr);
+  const FrontendMountInfo frontendMountInfo = resolveFrontendMountInfo();
+  registerFrontendRoutes(svr, frontendMountInfo.type);
 
   // ── 7. 挂载前端静态文件服务 ──────────────────────────────────
-  const std::string frontendMountPath = resolveFrontendMountPath();
-  if (frontendMountPath.empty()) {
+  if (frontendMountInfo.type == FrontendMountType::None) {
     std::cerr << "[警告] 未找到 frontend 静态目录，页面资源将无法访问。"
               << std::endl;
-  } else if (!svr.set_mount_point("/", frontendMountPath.c_str())) {
-    std::cerr << "[警告] frontend 静态目录挂载失败: " << frontendMountPath
+  } else if (!svr.set_mount_point("/", frontendMountInfo.path.c_str())) {
+    std::cerr << "[警告] frontend 静态目录挂载失败: " << frontendMountInfo.path
+              << std::endl;
+  } else {
+    std::cout << "[INFO] 已挂载前端目录: " << frontendMountInfo.path
               << std::endl;
   }
 

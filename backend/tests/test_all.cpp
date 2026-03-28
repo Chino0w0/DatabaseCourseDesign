@@ -21,18 +21,19 @@
  * ch_admin 的密码） TEST_DB_NAME  (默认 community_health)
  *
  * 示例：
- *   export TEST_DB_PASS=Admin@2026!
+ *   export TEST_DB_PASS=<your_test_db_password>
  *   ./build/community_health_tests
  */
 
 // ── 项目头文件 ────────────────────────────────────────────────
 #include "../dao/UserDAO.h"
 #include "../services/AuthService.h"
-#include "../utils/AuthSessionManager.h"
-#include "../utils/DatabaseManager.h"
 #include "../services/DiseaseService.h"
 #include "../services/VisitService.h"
+#include "../utils/AuthSessionManager.h"
+#include "../utils/DatabaseManager.h"
 #include "../utils/ResponseHelper.h"
+
 
 // ── 标准库 ───────────────────────────────────────────────────
 #include <atomic>
@@ -654,214 +655,247 @@ void testAuthPermissionClosure() {
 }
 
 void testDiseaseAndVisitServiceValidation() {
-    std::cout << "\n[Service] 模块5/6 参数校验测试\n";
+  std::cout << "\n[Service] 模块5/6 参数校验测试\n";
 
-    DiseaseService diseaseSvc;
-    {
-        json body = {{"disease_id", 1}};
-        json out = diseaseSvc.addResidentDisease(0, body);
-        EXPECT_TRUE("DiseaseService: resident_id<=0 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json body = json::object();
-        json out = diseaseSvc.addResidentDisease(1, body);
-        EXPECT_TRUE("DiseaseService: 缺少 disease_id 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json body = {{"disease_id", 0}};
-        json out = diseaseSvc.addResidentDisease(1, body);
-        EXPECT_TRUE("DiseaseService: disease_id<=0 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json body = {{"disease_id", 1}, {"status", "无效状态"}};
-        json out = diseaseSvc.addResidentDisease(1, body);
-        EXPECT_TRUE("DiseaseService: 非法 status 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json out = diseaseSvc.getResidentDiseases(0);
-        EXPECT_TRUE("DiseaseService: getResidentDiseases 参数校验",
-                    out.is_object() && out.contains("error"));
-    }
+  DiseaseService diseaseSvc;
+  {
+    json body = {{"disease_id", 1}};
+    json out = diseaseSvc.addResidentDisease(0, body);
+    EXPECT_TRUE("DiseaseService: resident_id<=0 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json body = json::object();
+    json out = diseaseSvc.addResidentDisease(1, body);
+    EXPECT_TRUE("DiseaseService: 缺少 disease_id 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json body = {{"disease_id", 0}};
+    json out = diseaseSvc.addResidentDisease(1, body);
+    EXPECT_TRUE("DiseaseService: disease_id<=0 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json body = {{"disease_id", 1}, {"status", "无效状态"}};
+    json out = diseaseSvc.addResidentDisease(1, body);
+    EXPECT_TRUE("DiseaseService: 非法 status 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json out = diseaseSvc.getResidentDiseases(0);
+    EXPECT_TRUE("DiseaseService: getResidentDiseases 参数校验",
+                out.is_object() && out.contains("error"));
+  }
 
-    VisitService visitSvc;
-    {
-        json body = json::object();
-        json out = visitSvc.createVisit(body);
-        EXPECT_TRUE("VisitService: 缺少 resident_id 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json body = {{"resident_id", 0}, {"visitor_user_id", 1}, {"visit_type", "上门随访"}, {"visit_date", "2026-03-27"}};
-        json out = visitSvc.createVisit(body);
-        EXPECT_TRUE("VisitService: resident_id<=0 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json body = {{"resident_id", 1}, {"visitor_user_id", 0}, {"visit_type", "上门随访"}, {"visit_date", "2026-03-27"}};
-        json out = visitSvc.createVisit(body);
-        EXPECT_TRUE("VisitService: visitor_user_id<=0 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json body = {{"resident_id", 1}, {"visitor_user_id", 1}, {"visit_type", ""}, {"visit_date", "2026-03-27"}};
-        json out = visitSvc.createVisit(body);
-        EXPECT_TRUE("VisitService: 空 visit_type 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json body = {{"resident_id", 1}, {"visitor_user_id", 1}, {"visit_type", "上门随访"}, {"visit_date", ""}};
-        json out = visitSvc.createVisit(body);
-        EXPECT_TRUE("VisitService: 空 visit_date 返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json body = {{"resident_id", 1}, {"visitor_user_id", 1}, {"visit_type", "上门随访"}, {"visit_date", "2026-03-27"}, {"content", 123}};
-        json out = visitSvc.createVisit(body);
-        EXPECT_TRUE("VisitService: content 非字符串返回 error",
-                    out.is_object() && out.contains("error"));
-    }
-    {
-        json out = visitSvc.getVisits(0);
-        EXPECT_TRUE("VisitService: getVisits 参数校验",
-                    out.is_object() && out.contains("error"));
-    }
+  VisitService visitSvc;
+  {
+    json body = json::object();
+    json out = visitSvc.createVisit(body);
+    EXPECT_TRUE("VisitService: 缺少 resident_id 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json body = {{"resident_id", 0},
+                 {"visitor_user_id", 1},
+                 {"visit_type", "上门随访"},
+                 {"visit_date", "2026-03-27"}};
+    json out = visitSvc.createVisit(body);
+    EXPECT_TRUE("VisitService: resident_id<=0 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json body = {{"resident_id", 1},
+                 {"visitor_user_id", 0},
+                 {"visit_type", "上门随访"},
+                 {"visit_date", "2026-03-27"}};
+    json out = visitSvc.createVisit(body);
+    EXPECT_TRUE("VisitService: visitor_user_id<=0 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json body = {{"resident_id", 1},
+                 {"visitor_user_id", 1},
+                 {"visit_type", ""},
+                 {"visit_date", "2026-03-27"}};
+    json out = visitSvc.createVisit(body);
+    EXPECT_TRUE("VisitService: 空 visit_type 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json body = {{"resident_id", 1},
+                 {"visitor_user_id", 1},
+                 {"visit_type", "上门随访"},
+                 {"visit_date", ""}};
+    json out = visitSvc.createVisit(body);
+    EXPECT_TRUE("VisitService: 空 visit_date 返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json body = {{"resident_id", 1},
+                 {"visitor_user_id", 1},
+                 {"visit_type", "上门随访"},
+                 {"visit_date", "2026-03-27"},
+                 {"content", 123}};
+    json out = visitSvc.createVisit(body);
+    EXPECT_TRUE("VisitService: content 非字符串返回 error",
+                out.is_object() && out.contains("error"));
+  }
+  {
+    json out = visitSvc.getVisits(0);
+    EXPECT_TRUE("VisitService: getVisits 参数校验",
+                out.is_object() && out.contains("error"));
+  }
 }
 
 void testEndToEndModule5And6Routes() {
-    std::cout << "\n[端到端] 模块5/6 路由参数校验测试\n";
+  std::cout << "\n[端到端] 模块5/6 路由参数校验测试\n";
 
-    const int TEST_PORT = 18082;
-    std::atomic<bool> server_ready{false};
+  const int TEST_PORT = 18082;
+  std::atomic<bool> server_ready{false};
 
-    std::thread server_thread([TEST_PORT, &server_ready]() {
-        httplib::Server svr;
+  std::thread server_thread([TEST_PORT, &server_ready]() {
+    httplib::Server svr;
 
-        svr.Options(".*", [](const httplib::Request&, httplib::Response& res) {
-            ResponseHelper::setCorsHeaders(res);
-            res.status = 204;
-        });
-
-        svr.Get("/api/v1/diseases", [](const httplib::Request&, httplib::Response& res) {
-            ResponseHelper::setCorsHeaders(res);
-            DiseaseService svc;
-            ResponseHelper::ok(res, svc.getDiseaseList(), "查询成功");
-        });
-
-        svr.Get(R"(/api/v1/residents/(\d+)/diseases)", [](const httplib::Request& req, httplib::Response& res) {
-            ResponseHelper::setCorsHeaders(res);
-            DiseaseService svc;
-            json data = svc.getResidentDiseases(std::stoi(std::string(req.matches[1])));
-            if (data.is_object() && data.contains("error")) {
-                ResponseHelper::fail(res, data.value("not_found", false) ? 404 : 400, data["error"].get<std::string>());
-                return;
-            }
-            ResponseHelper::ok(res, data, "查询成功");
-        });
-
-        svr.Post(R"(/api/v1/residents/(\d+)/diseases)", [](const httplib::Request& req, httplib::Response& res) {
-            ResponseHelper::setCorsHeaders(res);
-            try {
-                json body = json::parse(req.body);
-                DiseaseService svc;
-                json data = svc.addResidentDisease(std::stoi(std::string(req.matches[1])), body);
-                if (data.is_object() && data.contains("error")) {
-                    ResponseHelper::fail(res, data.value("not_found", false) ? 404 : 400, data["error"].get<std::string>());
-                    return;
-                }
-                ResponseHelper::ok(res, data, "关联慢性病成功");
-            } catch (...) {
-                ResponseHelper::fail(res, 400, "请求体不是合法 JSON");
-            }
-        });
-
-        svr.Get("/api/v1/visits", [](const httplib::Request& req, httplib::Response& res) {
-            ResponseHelper::setCorsHeaders(res);
-            if (!req.has_param("resident_id")) {
-                ResponseHelper::fail(res, 400, "缺少必填参数 resident_id");
-                return;
-            }
-            VisitService svc;
-            json data = svc.getVisits(std::atoi(req.get_param_value("resident_id").c_str()));
-            if (data.is_object() && data.contains("error")) {
-                ResponseHelper::fail(res, data.value("not_found", false) ? 404 : 400, data["error"].get<std::string>());
-                return;
-            }
-            ResponseHelper::ok(res, data, "查询成功");
-        });
-
-        svr.Post("/api/v1/visits", [](const httplib::Request& req, httplib::Response& res) {
-            ResponseHelper::setCorsHeaders(res);
-            try {
-                json body = json::parse(req.body);
-                VisitService svc;
-                json data = svc.createVisit(body);
-                if (data.is_object() && data.contains("error")) {
-                    ResponseHelper::fail(res, data.value("not_found", false) ? 404 : 400, data["error"].get<std::string>());
-                    return;
-                }
-                ResponseHelper::ok(res, data, "新增随访记录成功");
-            } catch (...) {
-                ResponseHelper::fail(res, 400, "请求体不是合法 JSON");
-            }
-        });
-
-        svr.Get("/stop", [&svr](const httplib::Request&, httplib::Response& res) {
-            res.status = 200;
-            svr.stop();
-        });
-
-        server_ready.store(true);
-        svr.listen("127.0.0.1", TEST_PORT);
+    svr.Options(".*", [](const httplib::Request &, httplib::Response &res) {
+      ResponseHelper::setCorsHeaders(res);
+      res.status = 204;
     });
 
-    int wait_ms = 0;
-    while (!server_ready.load() && wait_ms < 3000) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        wait_ms += 50;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    svr.Get("/api/v1/diseases",
+            [](const httplib::Request &, httplib::Response &res) {
+              ResponseHelper::setCorsHeaders(res);
+              DiseaseService svc;
+              ResponseHelper::ok(res, svc.getDiseaseList(), "查询成功");
+            });
 
-    {
-        httplib::Client cli("127.0.0.1", TEST_PORT);
-        auto result = cli.Get("/api/v1/visits");
-        EXPECT_TRUE("GET /api/v1/visits 缺少参数返回", result != nullptr);
-        if (result) {
-            EXPECT_EQ("GET /api/v1/visits 缺少 resident_id 返回 400", result->status, 400);
+    svr.Get(R"(/api/v1/residents/(\d+)/diseases)",
+            [](const httplib::Request &req, httplib::Response &res) {
+              ResponseHelper::setCorsHeaders(res);
+              DiseaseService svc;
+              json data = svc.getResidentDiseases(
+                  std::stoi(std::string(req.matches[1])));
+              if (data.is_object() && data.contains("error")) {
+                ResponseHelper::fail(res,
+                                     data.value("not_found", false) ? 404 : 400,
+                                     data["error"].get<std::string>());
+                return;
+              }
+              ResponseHelper::ok(res, data, "查询成功");
+            });
+
+    svr.Post(R"(/api/v1/residents/(\d+)/diseases)",
+             [](const httplib::Request &req, httplib::Response &res) {
+               ResponseHelper::setCorsHeaders(res);
+               try {
+                 json body = json::parse(req.body);
+                 DiseaseService svc;
+                 json data = svc.addResidentDisease(
+                     std::stoi(std::string(req.matches[1])), body);
+                 if (data.is_object() && data.contains("error")) {
+                   ResponseHelper::fail(
+                       res, data.value("not_found", false) ? 404 : 400,
+                       data["error"].get<std::string>());
+                   return;
+                 }
+                 ResponseHelper::ok(res, data, "关联慢性病成功");
+               } catch (...) {
+                 ResponseHelper::fail(res, 400, "请求体不是合法 JSON");
+               }
+             });
+
+    svr.Get("/api/v1/visits", [](const httplib::Request &req,
+                                 httplib::Response &res) {
+      ResponseHelper::setCorsHeaders(res);
+      if (!req.has_param("resident_id")) {
+        ResponseHelper::fail(res, 400, "缺少必填参数 resident_id");
+        return;
+      }
+      VisitService svc;
+      json data =
+          svc.getVisits(std::atoi(req.get_param_value("resident_id").c_str()));
+      if (data.is_object() && data.contains("error")) {
+        ResponseHelper::fail(res, data.value("not_found", false) ? 404 : 400,
+                             data["error"].get<std::string>());
+        return;
+      }
+      ResponseHelper::ok(res, data, "查询成功");
+    });
+
+    svr.Post("/api/v1/visits", [](const httplib::Request &req,
+                                  httplib::Response &res) {
+      ResponseHelper::setCorsHeaders(res);
+      try {
+        json body = json::parse(req.body);
+        VisitService svc;
+        json data = svc.createVisit(body);
+        if (data.is_object() && data.contains("error")) {
+          ResponseHelper::fail(res, data.value("not_found", false) ? 404 : 400,
+                               data["error"].get<std::string>());
+          return;
         }
-    }
+        ResponseHelper::ok(res, data, "新增随访记录成功");
+      } catch (...) {
+        ResponseHelper::fail(res, 400, "请求体不是合法 JSON");
+      }
+    });
 
-    {
-        httplib::Client cli("127.0.0.1", TEST_PORT);
-        auto result = cli.Post("/api/v1/visits", "{}", "application/json");
-        EXPECT_TRUE("POST /api/v1/visits 参数错误返回", result != nullptr);
-        if (result) {
-            EXPECT_EQ("POST /api/v1/visits 参数错误 HTTP 400", result->status, 400);
-        }
-    }
+    svr.Get("/stop", [&svr](const httplib::Request &, httplib::Response &res) {
+      res.status = 200;
+      svr.stop();
+    });
 
-    {
-        httplib::Client cli("127.0.0.1", TEST_PORT);
-        auto result = cli.Post("/api/v1/residents/1/diseases", "{}", "application/json");
-        EXPECT_TRUE("POST /api/v1/residents/1/diseases 参数错误返回", result != nullptr);
-        if (result) {
-            EXPECT_EQ("POST /api/v1/residents/1/diseases 参数错误 HTTP 400", result->status, 400);
-        }
-    }
+    server_ready.store(true);
+    svr.listen("127.0.0.1", TEST_PORT);
+  });
 
-    {
-        httplib::Client cli("127.0.0.1", TEST_PORT);
-        cli.Get("/stop");
-    }
+  int wait_ms = 0;
+  while (!server_ready.load() && wait_ms < 3000) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    wait_ms += 50;
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    if (server_thread.joinable()) {
-        server_thread.join();
+  {
+    httplib::Client cli("127.0.0.1", TEST_PORT);
+    auto result = cli.Get("/api/v1/visits");
+    EXPECT_TRUE("GET /api/v1/visits 缺少参数返回", result != nullptr);
+    if (result) {
+      EXPECT_EQ("GET /api/v1/visits 缺少 resident_id 返回 400", result->status,
+                400);
     }
+  }
+
+  {
+    httplib::Client cli("127.0.0.1", TEST_PORT);
+    auto result = cli.Post("/api/v1/visits", "{}", "application/json");
+    EXPECT_TRUE("POST /api/v1/visits 参数错误返回", result != nullptr);
+    if (result) {
+      EXPECT_EQ("POST /api/v1/visits 参数错误 HTTP 400", result->status, 400);
+    }
+  }
+
+  {
+    httplib::Client cli("127.0.0.1", TEST_PORT);
+    auto result =
+        cli.Post("/api/v1/residents/1/diseases", "{}", "application/json");
+    EXPECT_TRUE("POST /api/v1/residents/1/diseases 参数错误返回",
+                result != nullptr);
+    if (result) {
+      EXPECT_EQ("POST /api/v1/residents/1/diseases 参数错误 HTTP 400",
+                result->status, 400);
+    }
+  }
+
+  {
+    httplib::Client cli("127.0.0.1", TEST_PORT);
+    cli.Get("/stop");
+  }
+
+  if (server_thread.joinable()) {
+    server_thread.join();
+  }
 }
-
 
 // ============================================================
 // 第三部分：端到端 HTTP 测试（启动服务器线程）

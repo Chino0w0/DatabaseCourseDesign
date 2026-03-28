@@ -4,6 +4,7 @@
 #include "../utils/ResponseHelper.h"
 
 #include <exception>
+#include <iostream>
 #include <string>
 
 namespace {
@@ -16,6 +17,10 @@ void sendOk(httplib::Response &res, const json &data, const std::string &msg) {
 void sendFail(httplib::Response &res, int code, const std::string &msg) {
   ResponseHelper::setCorsHeaders(res);
   ResponseHelper::fail(res, code, msg);
+}
+
+void logServerError(const char *context, const std::exception &e) {
+  std::cerr << "[AuthController] " << context << ": " << e.what() << std::endl;
 }
 
 bool parseJsonBody(const httplib::Request &req, httplib::Response &res,
@@ -72,7 +77,8 @@ void AuthController::registerRoutes(httplib::Server &svr) {
                   {"token", authResult.token}},
              authResult.msg);
     } catch (const std::exception &e) {
-      sendFail(res, 500, std::string("登录失败: ") + e.what());
+      logServerError("login", e);
+      sendFail(res, 500, "登录失败，请稍后重试");
     }
   });
 }

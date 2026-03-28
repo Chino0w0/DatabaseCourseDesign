@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <iostream>
 #include <string>
 
 namespace {
@@ -19,6 +20,11 @@ void sendOk(httplib::Response &res, const json &data,
 void sendFail(httplib::Response &res, int code, const std::string &msg) {
   ResponseHelper::setCorsHeaders(res);
   ResponseHelper::fail(res, code, msg);
+}
+
+void logServerError(const char *context, const std::exception &e) {
+  std::cerr << "[HealthController] " << context << ": " << e.what()
+            << std::endl;
 }
 
 bool parseJsonBody(const httplib::Request &req, httplib::Response &res,
@@ -74,7 +80,8 @@ void HealthController::registerRoutes(httplib::Server &svr) {
       }
       sendOk(res, data, "查询成功");
     } catch (const std::exception &e) {
-      sendFail(res, 500, std::string("查询健康测量记录失败: ") + e.what());
+      logServerError("getMeasurements", e);
+      sendFail(res, 500, "查询健康测量记录失败，请稍后重试");
     }
   });
 
@@ -100,7 +107,8 @@ void HealthController::registerRoutes(httplib::Server &svr) {
       }
       sendOk(res, data, "录入测量数据成功");
     } catch (const std::exception &e) {
-      sendFail(res, 500, std::string("录入测量数据失败: ") + e.what());
+      logServerError("createMeasurement", e);
+      sendFail(res, 500, "录入测量数据失败，请稍后重试");
     }
   });
 
@@ -127,7 +135,8 @@ void HealthController::registerRoutes(httplib::Server &svr) {
       }
       sendOk(res, data, "查询成功");
     } catch (const std::exception &e) {
-      sendFail(res, 500, std::string("查询健康档案失败: ") + e.what());
+      logServerError("getHealthRecord", e);
+      sendFail(res, 500, "查询健康档案失败，请稍后重试");
     }
   });
 }
