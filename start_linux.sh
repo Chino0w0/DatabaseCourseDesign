@@ -9,7 +9,7 @@ shift || true
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
 DB_USER="${DB_USER:-ch_admin}"
-DB_PASS="${DB_PASS:-Admin@2026!}"
+DB_PASS="${DB_PASS:-}"
 DB_NAME="${DB_NAME:-community_health}"
 PORT="${PORT:-8080}"
 FRONTEND_PORT="${FRONTEND_PORT:-8080}"

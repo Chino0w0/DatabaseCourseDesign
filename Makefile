@@ -56,6 +56,10 @@ build: configure
 
 build-frontend:
 	@echo "[make] 编译 Vue 3 前端生产包"
+	@if [ ! -f "$(PROJECT_ROOT)/vue-frontend/package.json" ]; then \
+		echo "[make] 未检测到 vue-frontend/package.json，跳过 Vue3 构建（运行时将自动回退 frontend_old）"; \
+		exit 0; \
+	fi
 	@if [ ! -d "$(PROJECT_ROOT)/vue-frontend/node_modules" ]; then \
 		echo "[make] 安装 NPM 依赖..."; \
 		cd "$(PROJECT_ROOT)/vue-frontend" && npm install; \
