@@ -6,27 +6,49 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ============================================================
-# 第三方依赖：通过 FetchContent 自动下载（若 include/ 目录中
-# 已手动放置头文件，CMake 也会通过 target_include_directories
-# 正确找到它们）
+# 第三方依赖：优先使用 include/ 目录中的本地单头文件；
+# 仅当本地文件缺失时，才回退到 FetchContent 自动下载。
+# 这样 start_linux.sh / make build 在离线环境下也不会因为
+# 缺少 git 或无法访问 GitHub 而失败。
 # ============================================================
-include(FetchContent)
+set(LOCAL_HTTPLIB_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/include/httplib.h)
+set(LOCAL_JSON_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/include/json.hpp)
 
-# cpp-httplib — 轻量级 C++ HTTP 服务器/客户端单头文件库
-FetchContent_Declare(
-    httplib
-    GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-    GIT_TAG        v0.15.3
-)
+if(EXISTS ${LOCAL_HTTPLIB_HEADER})
+    add_library(httplib_local INTERFACE)
+    add_library(httplib::httplib ALIAS httplib_local)
+    target_include_directories(httplib_local INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    message(STATUS "使用本地 httplib 头文件: ${LOCAL_HTTPLIB_HEADER}")
+else()
+    include(FetchContent)
+    FetchContent_Declare(
+        httplib
+        GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+        GIT_TAG        v0.15.3
+    )
+    FetchContent_MakeAvailable(httplib)
+    message(STATUS "本地未找到 httplib.h，回退到 FetchContent 下载 cpp-httplib")
+endif()
 
-# nlohmann/json — 现代 C++ JSON 解析单头文件库
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.3
-)
-
-FetchContent_MakeAvailable(httplib nlohmann_json)
+if(EXISTS ${LOCAL_JSON_HEADER})
+    add_library(nlohmann_json_local INTERFACE)
+    add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json_local)
+    target_include_directories(nlohmann_json_local INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    message(STATUS "使用本地 json.hpp 头文件: ${LOCAL_JSON_HEADER}")
+else()
+    include(FetchContent)
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG        v3.11.3
+    )
+    FetchContent_MakeAvailable(nlohmann_json)
+    message(STATUS "本地未找到 json.hpp，回退到 FetchContent 下载 nlohmann/json")
+endif()
 
 # ============================================================
 # 查找 MySQL / MariaDB 客户端开发库

@@ -4,12 +4,22 @@
 #include "../utils/AuthSessionManager.h"
 #include "../utils/ResponseHelper.h"
 
+#include <iostream>
 #include <stdexcept>
 #include <string>
 
 // ============================================================
 // 注册所有居民档案及社区路由
 // ============================================================
+
+namespace {
+
+void logServerError(const char *context, const std::exception &e) {
+  std::cerr << "[ResidentController] " << context << ": " << e.what()
+            << std::endl;
+}
+
+} // namespace
 
 void ResidentController::registerRoutes(httplib::Server &svr) {
 
@@ -28,8 +38,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
               json data = svc.getCommunityList();
               ResponseHelper::ok(res, data, "查询成功");
             } catch (const std::exception &e) {
-              ResponseHelper::fail(res, 500,
-                                   std::string("服务器内部错误: ") + e.what());
+              logServerError("getCommunities", e);
+              ResponseHelper::fail(res, 500, "查询社区列表失败，请稍后重试");
             }
           });
 
@@ -56,8 +66,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
     } catch (const json::parse_error &) {
       ResponseHelper::fail(res, 400, "请求体不是合法的 JSON");
     } catch (const std::exception &e) {
-      ResponseHelper::fail(res, 500,
-                           std::string("服务器内部错误: ") + e.what());
+      logServerError("createCommunity", e);
+      ResponseHelper::fail(res, 500, "新增社区失败，请稍后重试");
     }
   });
 
@@ -91,8 +101,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
     } catch (const std::invalid_argument &) {
       ResponseHelper::fail(res, 400, "分页参数必须为整数");
     } catch (const std::exception &e) {
-      ResponseHelper::fail(res, 500,
-                           std::string("服务器内部错误: ") + e.what());
+      logServerError("listResidents", e);
+      ResponseHelper::fail(res, 500, "查询居民列表失败，请稍后重试");
     }
   });
 
@@ -117,8 +127,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
               }
               ResponseHelper::ok(res, data, "查询成功");
             } catch (const std::exception &e) {
-              ResponseHelper::fail(res, 500,
-                                   std::string("服务器内部错误: ") + e.what());
+              logServerError("getResidentDetail", e);
+              ResponseHelper::fail(res, 500, "查询居民详情失败，请稍后重试");
             }
           });
 
@@ -145,8 +155,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
     } catch (const json::parse_error &) {
       ResponseHelper::fail(res, 400, "请求体不是合法的 JSON");
     } catch (const std::exception &e) {
-      ResponseHelper::fail(res, 500,
-                           std::string("服务器内部错误: ") + e.what());
+      logServerError("createResident", e);
+      ResponseHelper::fail(res, 500, "新增居民失败，请稍后重试");
     }
   });
 
@@ -177,8 +187,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
     } catch (const json::parse_error &) {
       ResponseHelper::fail(res, 400, "请求体不是合法的 JSON");
     } catch (const std::exception &e) {
-      ResponseHelper::fail(res, 500,
-                           std::string("服务器内部错误: ") + e.what());
+      logServerError("updateResident", e);
+      ResponseHelper::fail(res, 500, "更新居民信息失败，请稍后重试");
     }
   });
 
@@ -203,8 +213,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
                  }
                  ResponseHelper::ok(res, nullptr, "删除居民成功");
                } catch (const std::exception &e) {
-                 ResponseHelper::fail(
-                     res, 500, std::string("服务器内部错误: ") + e.what());
+                 logServerError("deleteResident", e);
+                 ResponseHelper::fail(res, 500, "删除居民失败，请稍后重试");
                }
              });
 }
