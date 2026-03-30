@@ -74,6 +74,8 @@ void AuthController::registerRoutes(httplib::Server &svr) {
              json{{"user_id", authResult.user.id},
                   {"username", authResult.user.username},
                   {"role", authResult.user.roleName},
+                  {"role_id", authResult.user.roleId},
+                  {"resident_id", authResult.user.residentId},
                   {"token", authResult.token}},
              authResult.msg);
     } catch (const std::exception &e) {

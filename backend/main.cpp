@@ -29,6 +29,7 @@
 #include "controllers/UserController.h"
 
 #include "controllers/DiseaseController.h"
+#include "controllers/MyHealthController.h"
 #include "controllers/VisitController.h"
 
 // ── 标准库 ───────────────────────────────────────────────────
@@ -231,6 +232,9 @@ static void registerBusinessRoutes(httplib::Server &svr) {
 
   // 模块 6：随访管理
   VisitController::registerRoutes(svr);
+
+  // 模块 7：居民自助健康档案
+  MyHealthController::registerRoutes(svr);
 }
 
 // ============================================================

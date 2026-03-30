@@ -15,29 +15,9 @@
         router
         class="el-menu-vertical"
       >
-        <el-menu-item index="/dashboard">
-          <el-icon><DataBoard /></el-icon>
-          <template #title>数据概览</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/residents">
-          <el-icon><User /></el-icon>
-          <template #title>居民管理</template>
-        </el-menu-item>
-
-        <el-menu-item index="/health">
-          <el-icon><CopyDocument /></el-icon>
-          <template #title>健康档案</template>
-        </el-menu-item>
-
-        <el-menu-item index="/visits">
-          <el-icon><Document /></el-icon>
-          <template #title>随访管理</template>
-        </el-menu-item>
-
-        <el-menu-item index="/system/users" v-if="userStore.isAdmin">
-          <el-icon><Setting /></el-icon>
-          <template #title>系统管理</template>
+        <el-menu-item v-for="item in visibleMenus" :key="item.path" :index="item.path">
+          <el-icon><component :is="item.icon" /></el-icon>
+          <template #title>{{ item.title }}</template>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -62,7 +42,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item disabled>
-                  角色：{{ userStore.isAdmin ? '系统管理员' : (userStore.userInfo?.roleName || '医生/护士') }}
+                  角色：{{ userStore.roleName || (userStore.isAdmin ? '系统管理员' : (userStore.isDoctor ? '医生' : (userStore.isNurse ? '护士' : '未分配'))) }}
                 </el-dropdown-item>
                 <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
@@ -93,6 +73,34 @@ import { FirstAidKit, DataBoard, User, CopyDocument, Document, Setting, CaretBot
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+const ROLE_ADMIN = 'admin'
+const ROLE_DOCTOR = 'doctor'
+const ROLE_NURSE = 'nurse'
+const ROLE_RESIDENT = 'resident'
+
+const menuItems = [
+  { path: '/dashboard', title: '数据概览', icon: DataBoard, roles: [ROLE_ADMIN, ROLE_DOCTOR, ROLE_NURSE] },
+  { path: '/residents', title: '居民管理', icon: User, roles: [ROLE_ADMIN, ROLE_DOCTOR, ROLE_NURSE] },
+  { path: '/communities', title: '社区管理', icon: Setting, roles: [ROLE_ADMIN, ROLE_DOCTOR] },
+  { path: '/health', title: '健康档案', icon: CopyDocument, roles: [ROLE_ADMIN, ROLE_DOCTOR, ROLE_NURSE] },
+  { path: '/visits', title: '随访管理', icon: Document, roles: [ROLE_ADMIN, ROLE_DOCTOR, ROLE_NURSE] },
+  { path: '/my-health', title: '我的健康档案', icon: FirstAidKit, roles: [ROLE_RESIDENT] },
+  { path: '/system/users', title: '系统管理', icon: Setting, roles: [ROLE_ADMIN] }
+]
+
+const hasAccess = (roles: string[]) => {
+  return (
+    (roles.includes(ROLE_ADMIN) && userStore.isAdmin) ||
+    (roles.includes(ROLE_DOCTOR) && userStore.isDoctor) ||
+    (roles.includes(ROLE_NURSE) && userStore.isNurse) ||
+    (roles.includes(ROLE_RESIDENT) && userStore.isResident)
+  )
+}
+
+const visibleMenus = computed(() => {
+  return menuItems.filter(item => hasAccess(item.roles))
+})
 
 const activeMenu = computed(() => {
   return route.path

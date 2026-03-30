@@ -11,6 +11,9 @@
 
 namespace {
 
+const std::vector<int> kDiseaseReadRoleIds{1, 2, 3};
+const std::vector<int> kDiseaseWriteRoleIds{1, 2};
+
 void sendOk(httplib::Response &res, const json &data,
             const std::string &msg = "操作成功") {
   ResponseHelper::setCorsHeaders(res);
@@ -48,7 +51,8 @@ void DiseaseController::registerRoutes(httplib::Server &svr) {
   // GET /api/v1/diseases
   svr.Get("/api/v1/diseases",
           [](const httplib::Request &req, httplib::Response &res) {
-            auto currentUser = AuthSessionManager::requireUser(req, res);
+            auto currentUser =
+                AuthSessionManager::requireUser(req, res, kDiseaseReadRoleIds);
             if (!currentUser.has_value())
               return;
             try {
@@ -64,7 +68,8 @@ void DiseaseController::registerRoutes(httplib::Server &svr) {
   // GET /api/v1/residents/{id}/diseases
   svr.Get(R"(/api/v1/residents/(\d+)/diseases)", [](const httplib::Request &req,
                                                     httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kDiseaseReadRoleIds);
     if (!currentUser.has_value())
       return;
     try {
@@ -87,7 +92,8 @@ void DiseaseController::registerRoutes(httplib::Server &svr) {
   // POST /api/v1/residents/{id}/diseases
   svr.Post(R"(/api/v1/residents/(\d+)/diseases)",
            [](const httplib::Request &req, httplib::Response &res) {
-             auto currentUser = AuthSessionManager::requireUser(req, res);
+             auto currentUser = AuthSessionManager::requireUser(
+                 req, res, kDiseaseWriteRoleIds);
              if (!currentUser.has_value())
                return;
              try {

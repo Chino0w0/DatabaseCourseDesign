@@ -20,6 +20,10 @@ if(EXISTS ${LOCAL_HTTPLIB_HEADER})
     target_include_directories(httplib_local INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
+    target_link_libraries(httplib_local INTERFACE
+        $<$<PLATFORM_ID:Windows>:ws2_32>
+        $<$<PLATFORM_ID:Windows>:crypt32>
+    )
     message(STATUS "使用本地 httplib 头文件: ${LOCAL_HTTPLIB_HEADER}")
 else()
     include(FetchContent)
@@ -54,10 +58,30 @@ endif()
 # 查找 MySQL / MariaDB 客户端开发库
 # 优先走 pkg-config；若系统未提供 pkg-config，则回退到 find_path/find_library。
 # Ubuntu/Debian 可安装：default-libmysqlclient-dev 或 libmariadb-dev
+# Windows + MSYS2/UCRT64 下如果存在静态客户端库，则优先用于发布构建，
+# 以尽量减少用户机器上额外缺失的 DLL。
 # ============================================================
 set(MYSQLCLIENT_INCLUDE_DIRS "")
 set(MYSQLCLIENT_LIBRARIES "")
 set(MYSQLCLIENT_CFLAGS_OTHER "")
+set(MYSQLCLIENT_SYSTEM_LIBRARIES "")
+set(MYSQLCLIENT_STATIC_DEPENDENCY_LIBRARIES "")
+
+# 方案 B：Windows 下默认仅静态链接 libgcc/libstdc++ 运行时，
+# 数据库客户端库保持动态链接。这样比“全静态 + libmariadbclient.a”
+# 更稳定，避免额外手工补 zlib/zstd/curl 等静态依赖链。
+set(CH_WINDOWS_STATIC_RUNTIME_DEFAULT OFF)
+if(WIN32 AND MINGW)
+    set(CH_WINDOWS_STATIC_RUNTIME_DEFAULT ON)
+endif()
+option(CH_WINDOWS_STATIC_RUNTIME
+    "On Windows MinGW builds, prefer static libgcc/libstdc++ runtime"
+    ${CH_WINDOWS_STATIC_RUNTIME_DEFAULT}
+)
+option(CH_WINDOWS_STATIC_DBCLIENT
+    "On Windows MinGW builds, prefer static MariaDB/MySQL client libraries"
+    OFF
+)
 
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
@@ -100,6 +124,95 @@ if(MYSQLCLIENT_FOUND AND "${MYSQLCLIENT_LIBRARIES}" STREQUAL "")
     endif()
 endif()
 
+if(WIN32 AND MINGW)
+    list(APPEND MYSQLCLIENT_SYSTEM_LIBRARIES
+        ws2_32
+        crypt32
+        secur32
+        iphlpapi
+        bcrypt
+        ncrypt
+        shlwapi
+    )
+endif()
+
+if(WIN32 AND MINGW AND CH_WINDOWS_STATIC_DBCLIENT)
+    set(_MYSQLCLIENT_PREFERRED_LIBRARIES "")
+    set(_MYSQLCLIENT_SEARCH_DIRS
+        ${MYSQLCLIENT_LIBRARY_DIRS}
+        ${MYSQLCLIENT_STATIC_LIBRARY_DIRS}
+        ${MYSQLCLIENT_LIBDIR}
+        C:/msys64/ucrt64/lib
+    )
+
+    foreach(_lib IN LISTS MYSQLCLIENT_LIBRARIES)
+        set(_preferred_lib "${_lib}")
+
+        if(IS_ABSOLUTE "${_lib}")
+            get_filename_component(_lib_name "${_lib}" NAME)
+            get_filename_component(_lib_dir "${_lib}" DIRECTORY)
+
+            if(_lib_name STREQUAL "libmariadb.dll.a" AND EXISTS "${_lib_dir}/libmariadbclient.a")
+                set(_preferred_lib "${_lib_dir}/libmariadbclient.a")
+            elseif(_lib_name STREQUAL "libmysqlclient.dll.a" AND EXISTS "${_lib_dir}/libmysqlclient.a")
+                set(_preferred_lib "${_lib_dir}/libmysqlclient.a")
+            endif()
+        else()
+            if(_lib STREQUAL "mariadb" OR _lib STREQUAL "libmariadb")
+                find_library(_MYSQLCLIENT_STATIC_MATCH
+                    NAMES mariadbclient libmariadbclient mariadb libmariadb
+                    PATHS ${_MYSQLCLIENT_SEARCH_DIRS}
+                    NO_DEFAULT_PATH
+                )
+                if(_MYSQLCLIENT_STATIC_MATCH)
+                    set(_preferred_lib "${_MYSQLCLIENT_STATIC_MATCH}")
+                endif()
+            elseif(_lib STREQUAL "mysqlclient" OR _lib STREQUAL "libmysqlclient")
+                find_library(_MYSQLCLIENT_STATIC_MATCH
+                    NAMES mysqlclient libmysqlclient mariadbclient libmariadbclient
+                    PATHS ${_MYSQLCLIENT_SEARCH_DIRS}
+                    NO_DEFAULT_PATH
+                )
+                if(_MYSQLCLIENT_STATIC_MATCH)
+                    set(_preferred_lib "${_MYSQLCLIENT_STATIC_MATCH}")
+                endif()
+            endif()
+        endif()
+
+        list(APPEND _MYSQLCLIENT_PREFERRED_LIBRARIES "${_preferred_lib}")
+    endforeach()
+
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(_MSYS2_UCRT64_LIB_DIR "C:/msys64/ucrt64/lib")
+        if(EXISTS "${_MSYS2_UCRT64_LIB_DIR}/libz.a")
+            list(APPEND MYSQLCLIENT_STATIC_DEPENDENCY_LIBRARIES "${_MSYS2_UCRT64_LIB_DIR}/libz.a")
+        endif()
+        if(EXISTS "${_MSYS2_UCRT64_LIB_DIR}/libzstd.a")
+            list(APPEND MYSQLCLIENT_STATIC_DEPENDENCY_LIBRARIES "${_MSYS2_UCRT64_LIB_DIR}/libzstd.a")
+        endif()
+        if(EXISTS "${_MSYS2_UCRT64_LIB_DIR}/libcurl.a")
+            list(APPEND MYSQLCLIENT_STATIC_DEPENDENCY_LIBRARIES "${_MSYS2_UCRT64_LIB_DIR}/libcurl.a")
+        endif()
+    endif()
+
+    if(NOT "${_MYSQLCLIENT_PREFERRED_LIBRARIES}" STREQUAL "")
+        set(MYSQLCLIENT_LIBRARIES ${_MYSQLCLIENT_PREFERRED_LIBRARIES})
+        message(STATUS "Windows/MinGW 构建：优先使用静态 MySQL/MariaDB 客户端库")
+    else()
+        find_library(MYSQLCLIENT_STATIC_PREFERRED_LIBRARY
+            NAMES mariadbclient mysqlclient libmariadbclient libmysqlclient
+            PATHS ${_MYSQLCLIENT_SEARCH_DIRS}
+            NO_DEFAULT_PATH
+        )
+        if(MYSQLCLIENT_STATIC_PREFERRED_LIBRARY)
+            set(MYSQLCLIENT_LIBRARIES ${MYSQLCLIENT_STATIC_PREFERRED_LIBRARY})
+            message(STATUS "Windows/MinGW 构建：使用静态 MySQL/MariaDB 客户端库: ${MYSQLCLIENT_STATIC_PREFERRED_LIBRARY}")
+        endif()
+    endif()
+else()
+    message(STATUS "Windows/MinGW 构建：使用方案 B（静态运行时 + 动态数据库客户端库）")
+endif()
+
 # ============================================================
 # 收集全部源文件
 # 注意：使用 GLOB（非递归）+ 明确列出 main.cpp，避免 GLOB_RECURSE
@@ -131,6 +244,8 @@ target_link_libraries(community_health_server PRIVATE
     httplib::httplib
     nlohmann_json::nlohmann_json
     ${MYSQLCLIENT_LIBRARIES}
+    ${MYSQLCLIENT_STATIC_DEPENDENCY_LIBRARIES}
+    ${MYSQLCLIENT_SYSTEM_LIBRARIES}
 )
 
 target_compile_options(community_health_server PRIVATE
@@ -139,6 +254,16 @@ target_compile_options(community_health_server PRIVATE
     -Wextra
     -Wno-unused-parameter
 )
+
+if(WIN32 AND MINGW AND CH_WINDOWS_STATIC_RUNTIME)
+    # 方案 B 下只静态链接 libgcc/libstdc++，不要使用全局 -static。
+    # 否则链接器会拒绝使用 libmariadb.dll.a 这类导入库，导致
+    # "cannot find -lmariadb" 之类错误。
+    target_link_options(community_health_server PRIVATE
+        -static-libgcc
+        -static-libstdc++
+    )
+endif()
 
 # ============================================================
 # 测试目标（CTest 集成）
@@ -166,6 +291,8 @@ target_link_libraries(community_health_tests PRIVATE
     httplib::httplib
     nlohmann_json::nlohmann_json
     ${MYSQLCLIENT_LIBRARIES}
+    ${MYSQLCLIENT_STATIC_DEPENDENCY_LIBRARIES}
+    ${MYSQLCLIENT_SYSTEM_LIBRARIES}
 )
 
 target_compile_options(community_health_tests PRIVATE
@@ -174,6 +301,13 @@ target_compile_options(community_health_tests PRIVATE
     -Wextra
     -Wno-unused-parameter
 )
+
+if(WIN32 AND MINGW AND CH_WINDOWS_STATIC_RUNTIME)
+    target_link_options(community_health_tests PRIVATE
+        -static-libgcc
+        -static-libstdc++
+    )
+endif()
 
 # 注册到 CTest
 add_test(NAME BackendInfraTests COMMAND community_health_tests)
@@ -192,3 +326,6 @@ set_tests_properties(BackendInfraTests PROPERTIES
 message(STATUS "构建目标: community_health_server")
 message(STATUS "测试目标: community_health_tests")
 message(STATUS "C++ 标准: C++${CMAKE_CXX_STANDARD}")
+message(STATUS "Windows MinGW 静态运行时: ${CH_WINDOWS_STATIC_RUNTIME}")
+message(STATUS "Windows MinGW 静态数据库客户端库: ${CH_WINDOWS_STATIC_DBCLIENT}")
+message(STATUS "Windows MinGW 静态数据库客户端库: ${CH_WINDOWS_STATIC_DBCLIENT}")
