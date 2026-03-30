@@ -7,12 +7,17 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 // ============================================================
 // 注册所有居民档案及社区路由
 // ============================================================
 
 namespace {
+
+const std::vector<int> kAdminRoleIds{1};
+const std::vector<int> kDoctorRoleIds{2};
+const std::vector<int> kAdminDoctorRoleIds{1, 2};
 
 void logServerError(const char *context, const std::exception &e) {
   std::cerr << "[ResidentController] " << context << ": " << e.what()
@@ -137,7 +142,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
   // ──────────────────────────────────────────────────────────
   svr.Post("/api/v1/residents", [](const httplib::Request &req,
                                    httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kAdminDoctorRoleIds);
     if (!currentUser.has_value()) {
       return;
     }
@@ -165,7 +171,7 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
   // ──────────────────────────────────────────────────────────
   svr.Put(R"(/api/v1/residents/(\d+))", [](const httplib::Request &req,
                                            httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser = AuthSessionManager::requireUser(req, res, kAdminRoleIds);
     if (!currentUser.has_value()) {
       return;
     }
@@ -197,7 +203,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
   // ──────────────────────────────────────────────────────────
   svr.Delete(R"(/api/v1/residents/(\d+))",
              [](const httplib::Request &req, httplib::Response &res) {
-               auto currentUser = AuthSessionManager::requireUser(req, res);
+               auto currentUser =
+                   AuthSessionManager::requireUser(req, res, kAdminRoleIds);
                if (!currentUser.has_value()) {
                  return;
                }

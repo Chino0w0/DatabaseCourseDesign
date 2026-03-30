@@ -90,6 +90,10 @@ json HealthService::createMeasurement(const json& body) {
         && !body["measured_by_user_id"].is_number_integer()) {
         return json{{"error", "measured_by_user_id 必须为整数"}};
     }
+    if (body.contains("measured_at") && !body["measured_at"].is_null()
+        && !body["measured_at"].is_string()) {
+        return json{{"error", "measured_at 必须为字符串（格式：YYYY-MM-DD HH:mm:ss）"}};
+    }
 
     if (!optionalIntInRange(body, "systolic", 50, 300)) return json{{"error", "systolic 范围应为 50-300"}};
     if (!optionalIntInRange(body, "diastolic", 30, 200)) return json{{"error", "diastolic 范围应为 30-200"}};
@@ -121,6 +125,9 @@ json HealthService::createMeasurement(const json& body) {
     if (body.contains("weight") && !body["weight"].is_null()) m.weight = body["weight"].get<double>();
     m.notes = body.value("notes", std::string());
     m.measured_by = measured_by;
+    if (body.contains("measured_at") && body["measured_at"].is_string()) {
+        m.measured_at = body["measured_at"].get<std::string>();
+    }
 
     const int new_id = dao.insertMeasurement(m);
     auto warnings = dao.getWarningMessagesByMeasurementId(new_id);
@@ -142,4 +149,56 @@ json HealthService::getHealthRecord(int resident_id) {
     HealthRecord record = dao.getHealthRecordByResidentId(resident_id);
     if (record.id == 0) return nullptr;
     return healthRecordToJson(record);
+}
+
+json HealthService::getWarningSummary() {
+    HealthMeasurementDAO dao;
+    return json{
+        {"total", dao.countWarnings(false)},
+        {"unhandled", dao.countWarnings(true)}
+    };
+}
+
+json HealthService::upsertHealthRecord(int resident_id, const json& body) {
+    if (resident_id <= 0) {
+        return json{{"error", "resident_id 必须为正整数"}};
+    }
+
+    auto checkOptionalString = [&body](const std::string& key) -> bool {
+        return !body.contains(key) || body[key].is_null() || body[key].is_string();
+    };
+
+    if (!checkOptionalString("blood_type") ||
+        !checkOptionalString("allergy_history") ||
+        !checkOptionalString("family_history") ||
+        !checkOptionalString("past_medical_history")) {
+        return json{{"error", "摘要字段必须为字符串"}};
+    }
+
+    HealthMeasurementDAO dao;
+    if (!dao.residentExists(resident_id)) {
+        return json{{"error", "居民不存在"}, {"not_found", true}};
+    }
+
+    const std::string blood_type =
+        (body.contains("blood_type") && !body["blood_type"].is_null())
+            ? body["blood_type"].get<std::string>()
+            : std::string();
+    const std::string allergy_history =
+        (body.contains("allergy_history") && !body["allergy_history"].is_null())
+            ? body["allergy_history"].get<std::string>()
+            : std::string();
+    const std::string family_history =
+        (body.contains("family_history") && !body["family_history"].is_null())
+            ? body["family_history"].get<std::string>()
+            : std::string();
+    const std::string past_medical_history =
+        (body.contains("past_medical_history") && !body["past_medical_history"].is_null())
+            ? body["past_medical_history"].get<std::string>()
+            : std::string();
+
+    dao.upsertHealthRecord(resident_id, blood_type, allergy_history, family_history,
+                           past_medical_history);
+
+    return json{{"resident_id", resident_id}};
 }

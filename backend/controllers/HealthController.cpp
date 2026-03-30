@@ -140,4 +140,50 @@ void HealthController::registerRoutes(httplib::Server &svr) {
       sendFail(res, 500, "查询健康档案失败，请稍后重试");
     }
   });
+
+  // PUT /api/v1/health/records/{resident_id}
+  svr.Put(R"(/api/v1/health/records/(\d+))", [](const httplib::Request &req,
+                                                 httplib::Response &res) {
+    auto currentUser = AuthSessionManager::requireUser(req, res);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
+    try {
+      json body;
+      if (!parseJsonBody(req, res, body)) {
+        return;
+      }
+
+      const int resident_id = std::atoi(std::string(req.matches[1]).c_str());
+      HealthService svc;
+      json data = svc.upsertHealthRecord(resident_id, body);
+      if (data.is_object() && data.contains("error")) {
+        const bool not_found = data.value("not_found", false);
+        sendFail(res, not_found ? 404 : 400, data["error"].get<std::string>());
+        return;
+      }
+      sendOk(res, data, "更新健康档案摘要成功");
+    } catch (const std::exception &e) {
+      logServerError("upsertHealthRecord", e);
+      sendFail(res, 500, "更新健康档案摘要失败，请稍后重试");
+    }
+  });
+
+  // GET /api/v1/health/warnings/summary
+  svr.Get("/api/v1/health/warnings/summary", [](const httplib::Request &req,
+                                                 httplib::Response &res) {
+    auto currentUser = AuthSessionManager::requireUser(req, res);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
+    try {
+      HealthService svc;
+      sendOk(res, svc.getWarningSummary(), "查询成功");
+    } catch (const std::exception &e) {
+      logServerError("getWarningSummary", e);
+      sendFail(res, 500, "查询预警汇总失败，请稍后重试");
+    }
+  });
 }

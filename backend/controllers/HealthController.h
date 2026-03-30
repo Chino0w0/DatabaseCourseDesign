@@ -15,6 +15,8 @@
  *   GET  /api/v1/health/measurements
  *   POST /api/v1/health/measurements
  *   GET  /api/v1/health/records/:resident_id
+ *   PUT  /api/v1/health/records/:resident_id
+ *   GET  /api/v1/health/warnings/summary
  */
 class HealthController {
 public:

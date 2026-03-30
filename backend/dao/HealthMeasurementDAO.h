@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "../models/HealthMeasurement.h"
@@ -55,4 +56,26 @@ public:
      * @return 预警文本列表
      */
     std::vector<std::string> getWarningMessagesByMeasurementId(int measurement_id);
+
+    /**
+     * @brief 获取预警总数
+     * @param only_unhandled 是否仅统计未处理预警（is_handled = 0）
+     * @return 预警条数
+     */
+    int countWarnings(bool only_unhandled = false);
+
+    /**
+     * @brief 新增或更新居民健康档案摘要
+     * @param resident_id 居民 ID
+     * @param blood_type 血型
+     * @param allergy_history 过敏史
+     * @param family_history 家族病史
+     * @param past_medical_history 既往病史
+     * @return true 更新成功
+     */
+    bool upsertHealthRecord(int resident_id,
+                            const std::string& blood_type,
+                            const std::string& allergy_history,
+                            const std::string& family_history,
+                            const std::string& past_medical_history);
 };

@@ -21,6 +21,11 @@ std::string sqlNullableDouble(double v) {
     return oss.str();
 }
 
+std::string sqlNullableDateTime(const std::string& v) {
+    if (v.empty()) return "CURRENT_TIMESTAMP";
+    return "'" + DatabaseManager::getInstance().escape(v) + "'";
+}
+
 } // namespace
 
 std::vector<HealthMeasurement> HealthMeasurementDAO::listByResidentId(int resident_id, int limit) {
@@ -76,7 +81,7 @@ int HealthMeasurementDAO::insertMeasurement(const HealthMeasurement& m) {
     std::ostringstream sql;
     sql << "INSERT INTO health_measurements "
            "(resident_id, systolic, diastolic, blood_sugar, heart_rate, height, "
-           "weight, bmi, notes, measured_by) VALUES ("
+           "weight, bmi, notes, measured_by, measured_at) VALUES ("
         << m.resident_id << ", "
         << sqlNullableInt(m.systolic) << ", "
         << sqlNullableInt(m.diastolic) << ", "
@@ -86,7 +91,8 @@ int HealthMeasurementDAO::insertMeasurement(const HealthMeasurement& m) {
         << sqlNullableDouble(m.weight) << ", "
         << sqlNullableDouble(bmi) << ", "
         << "'" << db.escape(m.notes) << "', "
-        << ((m.measured_by > 0) ? std::to_string(m.measured_by) : "NULL")
+        << ((m.measured_by > 0) ? std::to_string(m.measured_by) : "NULL") << ", "
+        << sqlNullableDateTime(m.measured_at)
         << ")";
 
     db.execute(sql.str());
@@ -172,4 +178,74 @@ std::vector<std::string> HealthMeasurementDAO::getWarningMessagesByMeasurementId
     }
     mysql_free_result(res);
     return warnings;
+}
+
+int HealthMeasurementDAO::countWarnings(bool only_unhandled) {
+    std::string sql = "SELECT COUNT(*) FROM health_warnings";
+    if (only_unhandled) {
+        sql += " WHERE is_handled = 0";
+    }
+
+    MYSQL_RES* res = nullptr;
+    try {
+        res = DatabaseManager::getInstance().query(sql);
+    } catch (...) {
+        return 0;
+    }
+
+    if (!res) return 0;
+
+    int count = 0;
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (row && row[0]) {
+        count = std::stoi(row[0]);
+    }
+
+    mysql_free_result(res);
+    return count;
+}
+
+bool HealthMeasurementDAO::upsertHealthRecord(
+    int resident_id,
+    const std::string& blood_type,
+    const std::string& allergy_history,
+    const std::string& family_history,
+    const std::string& past_medical_history) {
+    auto& db = DatabaseManager::getInstance();
+
+    const std::string escaped_blood_type = db.escape(blood_type);
+    const std::string escaped_allergy = db.escape(allergy_history);
+    const std::string escaped_family = db.escape(family_history);
+    const std::string escaped_past = db.escape(past_medical_history);
+
+    std::string check_sql =
+        "SELECT id FROM health_records WHERE resident_id = " +
+        std::to_string(resident_id) + " LIMIT 1";
+
+    MYSQL_RES* res = db.query(check_sql);
+    const bool exists = (res && mysql_fetch_row(res) != nullptr);
+    if (res) {
+        mysql_free_result(res);
+    }
+
+    std::ostringstream sql;
+    if (exists) {
+        sql << "UPDATE health_records SET "
+            << "blood_type='" << escaped_blood_type << "', "
+            << "allergy_history='" << escaped_allergy << "', "
+            << "family_history='" << escaped_family << "', "
+            << "past_medical_history='" << escaped_past << "' "
+            << "WHERE resident_id=" << resident_id;
+    } else {
+        sql << "INSERT INTO health_records "
+            << "(resident_id, blood_type, allergy_history, family_history, past_medical_history) VALUES ("
+            << resident_id << ", '"
+            << escaped_blood_type << "', '"
+            << escaped_allergy << "', '"
+            << escaped_family << "', '"
+            << escaped_past << "')";
+    }
+
+    db.execute(sql.str());
+    return true;
 }

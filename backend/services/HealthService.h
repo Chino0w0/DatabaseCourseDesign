@@ -38,4 +38,18 @@ public:
      * @return 健康档案对象；不存在时返回 null；参数非法时返回带 error 的对象
      */
     json getHealthRecord(int resident_id);
+
+    /**
+     * @brief 获取健康预警汇总数据
+     * @return { total, unhandled }
+     */
+    json getWarningSummary();
+
+    /**
+     * @brief 更新居民健康档案摘要（不存在则新增）
+     * @param resident_id 居民 ID
+     * @param body 请求体（blood_type/allergy_history/family_history/past_medical_history）
+     * @return 成功返回 { resident_id }；失败返回带 error 的对象
+     */
+    json upsertHealthRecord(int resident_id, const json& body);
 };

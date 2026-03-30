@@ -9,8 +9,11 @@
 #include <exception>
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace {
+
+const std::vector<int> kAdminNurseRoleIds{1, 3};
 
 void sendOk(httplib::Response &res, const json &data,
             const std::string &msg = "操作成功") {
@@ -81,7 +84,8 @@ void VisitController::registerRoutes(httplib::Server &svr) {
   // POST /api/v1/visits
   svr.Post("/api/v1/visits",
            [](const httplib::Request &req, httplib::Response &res) {
-             auto currentUser = AuthSessionManager::requireUser(req, res);
+             auto currentUser =
+                 AuthSessionManager::requireUser(req, res, kAdminNurseRoleIds);
              if (!currentUser.has_value())
                return;
              try {

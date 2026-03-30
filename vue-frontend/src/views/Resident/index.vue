@@ -12,7 +12,13 @@
       <el-button class="filter-item" type="primary" icon="Search" @click="handleFilter">
         搜索
       </el-button>
-      <el-button class="filter-item" type="success" icon="Plus" @click="handleCreate">
+      <el-button
+        v-if="userStore.isAdmin || userStore.isDoctor"
+        class="filter-item"
+        type="success"
+        icon="Plus"
+        @click="handleCreate"
+      >
         新增居民档案
       </el-button>
     </div>
@@ -30,11 +36,18 @@
       <el-table-column prop="birth_date" label="出生日期" width="120" align="center" />
       <el-table-column prop="phone" label="联系电话" width="130" />
       <el-table-column prop="community_name" label="所属社区" width="150" />
+      <el-table-column prop="emergency_contact" label="紧急联系人" width="120" />
+      <el-table-column prop="emergency_phone" label="紧急电话" width="130" />
       <el-table-column prop="address" label="详细地址" min-width="200" show-overflow-tooltip />
-      <el-table-column label="操作" width="220" align="center" fixed="right">
+      <el-table-column v-if="userStore.isAdmin" label="操作" width="220" align="center" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" size="small" icon="Edit" @click="handleUpdate(row)">编辑</el-button>
-          <el-button type="danger" size="small" icon="Delete" @click="handleDelete(row)">删除</el-button>
+          <el-button
+            type="danger"
+            size="small"
+            icon="Delete"
+            @click="handleDelete(row)"
+          >删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -137,6 +150,9 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import request from '@/utils/request'
+import { useUserStore } from '@/store/user'
+
+const userStore = useUserStore()
 
 const listLoading = ref(false)
 const list = ref([])
@@ -165,7 +181,9 @@ const getList = async () => {
 const getCommunities = async () => {
   try {
     const res: any = await request.get('/communities')
-    if (res.code === 200) communities.value = res.data.list || []
+    if (res.code === 200) {
+      communities.value = Array.isArray(res.data) ? res.data : (res.data.list || [])
+    }
   } catch (err) {}
 }
 
@@ -224,13 +242,26 @@ const resetTemp = () => {
 }
 
 const handleCreate = () => {
+  if (!(userStore.isAdmin || userStore.isDoctor)) {
+    ElMessage.warning('仅管理员和医生可新增居民档案')
+    return
+  }
+
   resetTemp()
+  if (communities.value.length === 0) {
+    getCommunities()
+  }
   dialogStatus.value = 'create'
   dialogFormVisible.value = true
   setTimeout(() => dataFormRef.value?.clearValidate(), 0)
 }
 
 const createData = () => {
+  if (!(userStore.isAdmin || userStore.isDoctor)) {
+    ElMessage.warning('仅管理员和医生可新增居民档案')
+    return
+  }
+
   dataFormRef.value?.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
@@ -249,6 +280,11 @@ const createData = () => {
 }
 
 const handleUpdate = (row: any) => {
+  if (!userStore.isAdmin) {
+    ElMessage.warning('仅管理员可编辑居民档案')
+    return
+  }
+
   Object.assign(temp, row) // 浅拷贝回显
   
   // 处理社区 ID 回填（假设后端没返回 community_id 只有 name，如有需要需特殊处理，这里假定 row 会包含 community_id 或我们在表单需要重新选择）
@@ -263,6 +299,11 @@ const handleUpdate = (row: any) => {
 }
 
 const updateData = () => {
+  if (!userStore.isAdmin) {
+    ElMessage.warning('仅管理员可编辑居民档案')
+    return
+  }
+
   dataFormRef.value?.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
@@ -281,6 +322,11 @@ const updateData = () => {
 }
 
 const handleDelete = (row: any) => {
+  if (!userStore.isAdmin) {
+    ElMessage.warning('仅管理员可删除居民档案')
+    return
+  }
+
   ElMessageBox.confirm('确定要删除该居民档案吗? 此操作不可逆', '警告', {
     confirmButtonText: '确定删除',
     cancelButtonText: '取消',

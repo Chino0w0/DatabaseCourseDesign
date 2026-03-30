@@ -89,7 +89,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import {
-  User, RefreshRight, Warning, FirstAidKit
+  User, RefreshRight, Warning, FirstAidKit, DocumentAdd, EditPen, Setting
 } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import StatCard from '@/components/StatCard.vue'
@@ -127,7 +127,13 @@ const getDashboardStats = async () => {
     // 2. 获取社区总数
     const comRes: any = await request.get('/communities')
     if (comRes.code === 200) {
-      statistics.hyperCount = comRes.data.list?.length || comRes.data.length || 0
+      statistics.hyperCount = Array.isArray(comRes.data) ? comRes.data.length : (comRes.data.list?.length || 0)
+    }
+
+    // 3. 获取异常预警汇总（未处理）
+    const warningRes: any = await request.get('/health/warnings/summary')
+    if (warningRes.code === 200) {
+      statistics.diabeticCount = warningRes.data?.unhandled ?? warningRes.data?.total ?? 0
     }
   } catch (err) {}
 }

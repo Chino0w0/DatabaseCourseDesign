@@ -24,7 +24,13 @@
         查询随访记录
       </el-button>
       
-      <el-button type="success" icon="EditPen" :disabled="!selectedResidentId" @click="handleCreate">
+      <el-button
+        v-if="userStore.isNurse || userStore.isAdmin"
+        type="success"
+        icon="EditPen"
+        :disabled="!selectedResidentId"
+        @click="handleCreate"
+      >
         新增随访记录
       </el-button>
     </div>
@@ -186,6 +192,11 @@ const rules = reactive<FormRules>({
 })
 
 const handleCreate = () => {
+  if (!(userStore.isNurse || userStore.isAdmin)) {
+    ElMessage.warning('仅管理员和护士可新增随访档案')
+    return
+  }
+
   temp.visit_date = getTodayDate()
   temp.visit_type = '上门随访'
   temp.content = ''
@@ -195,6 +206,11 @@ const handleCreate = () => {
 }
 
 const createData = () => {
+  if (!(userStore.isNurse || userStore.isAdmin)) {
+    ElMessage.warning('仅管理员和护士可新增随访档案')
+    return
+  }
+
   dataFormRef.value?.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
