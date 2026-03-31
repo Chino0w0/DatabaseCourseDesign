@@ -41,7 +41,7 @@ plans/frontend-vue-test-report.json
 package.json
 package-lock.json
 plans/
-tests/
+tests/*.spec.js
 
 # 发布包目录与压缩产物（作为独立分发包，不纳入仓库源码）
 release/
