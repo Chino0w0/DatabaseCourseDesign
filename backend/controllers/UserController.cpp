@@ -203,6 +203,7 @@ void UserController::registerRoutes(httplib::Server &svr) {
       std::optional<int> status = std::nullopt;
       std::optional<int> roleId = std::nullopt;
       std::optional<std::string> password = std::nullopt;
+      bool passwordChanged = false;
 
       if (body.contains("real_name")) {
         if (!body["real_name"].is_string() ||
@@ -249,6 +250,7 @@ void UserController::registerRoutes(httplib::Server &svr) {
           return;
         }
         password = body["password"].get<std::string>();
+        passwordChanged = true;
       }
 
       if (!realName.has_value() && !phone.has_value() && !status.has_value() &&
@@ -276,7 +278,7 @@ void UserController::registerRoutes(httplib::Server &svr) {
         return;
       }
 
-      if (updatedUser->status != 1) {
+      if (updatedUser->status != 1 || passwordChanged) {
         AuthSessionManager::revokeUserTokens(userId);
       }
 
@@ -284,6 +286,61 @@ void UserController::registerRoutes(httplib::Server &svr) {
     } catch (const std::exception &e) {
       logServerError("updateUser", e);
       sendFail(res, 500, "更新用户失败，请稍后重试");
+    }
+  });
+
+  svr.Put("/api/v1/users/me/password", [](const httplib::Request &req,
+                                          httplib::Response &res) {
+    auto currentUser = AuthSessionManager::requireUser(req, res);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
+    try {
+      json body;
+      if (!parseJsonBody(req, res, body)) {
+        return;
+      }
+
+      if (!hasValidStringField(body, "old_password") ||
+          !hasValidStringField(body, "new_password")) {
+        sendFail(res, 400, "缺少必要字段：old_password、new_password");
+        return;
+      }
+
+      const std::string oldPassword = body["old_password"].get<std::string>();
+      const std::string newPassword = body["new_password"].get<std::string>();
+      if (newPassword.size() < 6) {
+        sendFail(res, 400, "新密码长度不能少于 6 位");
+        return;
+      }
+      if (oldPassword == newPassword) {
+        sendFail(res, 400, "新密码不能与旧密码相同");
+        return;
+      }
+      if (newPassword.size() < 6) {
+        sendFail(res, 400, "新密码长度不能少于 6 位");
+        return;
+      }
+
+      UserDAO userDao;
+      if (!userDao.verifyPassword(currentUser->id, oldPassword)) {
+        sendFail(res, 400, "旧密码错误");
+        return;
+      }
+
+      if (!userDao.updateUser(currentUser->id, std::nullopt, std::nullopt,
+                              std::nullopt, std::nullopt, newPassword)) {
+        sendFail(res, 404, "用户不存在");
+        return;
+      }
+
+      AuthSessionManager::revokeUserTokens(currentUser->id);
+      sendOk(res, json{{"user_id", currentUser->id}},
+             "密码修改成功，请重新登录");
+    } catch (const std::exception &e) {
+      logServerError("changeMyPassword", e);
+      sendFail(res, 500, "修改密码失败，请稍后重试");
     }
   });
 

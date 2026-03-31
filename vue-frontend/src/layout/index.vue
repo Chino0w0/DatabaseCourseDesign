@@ -44,6 +44,7 @@
                 <el-dropdown-item disabled>
                   角色：{{ userStore.roleName || (userStore.isAdmin ? '系统管理员' : (userStore.isDoctor ? '医生' : (userStore.isNurse ? '护士' : '未分配'))) }}
                 </el-dropdown-item>
+                <el-dropdown-item command="change-password">修改密码</el-dropdown-item>
                 <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -61,13 +62,39 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <el-dialog v-model="passwordDialogVisible" title="修改密码" width="420px">
+    <el-form
+      ref="passwordFormRef"
+      :model="passwordForm"
+      :rules="passwordRules"
+      label-width="90px"
+      label-position="right"
+    >
+      <el-form-item label="旧密码" prop="old_password">
+        <el-input v-model="passwordForm.old_password" type="password" show-password placeholder="请输入旧密码" />
+      </el-form-item>
+      <el-form-item label="新密码" prop="new_password">
+        <el-input v-model="passwordForm.new_password" type="password" show-password placeholder="请输入新密码" />
+      </el-form-item>
+      <el-form-item label="确认密码" prop="confirm_password">
+        <el-input v-model="passwordForm.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="passwordDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="passwordSubmitting" @click="submitPasswordChange">确定</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
+import request from '@/utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import { FirstAidKit, DataBoard, User, CopyDocument, Document, Setting, CaretBottom } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -110,7 +137,80 @@ const currentRouteTitle = computed(() => {
   return route.meta.title || '工作台'
 })
 
+const passwordDialogVisible = ref(false)
+const passwordSubmitting = ref(false)
+const passwordFormRef = ref<FormInstance>()
+const passwordForm = reactive({
+  old_password: '',
+  new_password: '',
+  confirm_password: ''
+})
+
+const resetPasswordForm = () => {
+  passwordForm.old_password = ''
+  passwordForm.new_password = ''
+  passwordForm.confirm_password = ''
+}
+
+const validateConfirmPassword = (_rule: any, value: string, callback: (error?: Error) => void) => {
+  if (!value) {
+    callback(new Error('请再次输入新密码'))
+    return
+  }
+  if (value !== passwordForm.new_password) {
+    callback(new Error('两次输入的新密码不一致'))
+    return
+  }
+  callback()
+}
+
+const passwordRules = reactive<FormRules>({
+  old_password: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+  new_password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '新密码长度不能少于 6 位', trigger: 'blur' }
+  ],
+  confirm_password: [{ validator: validateConfirmPassword, trigger: ['blur', 'change'] }]
+})
+
+const openPasswordDialog = () => {
+  resetPasswordForm()
+  passwordDialogVisible.value = true
+  setTimeout(() => passwordFormRef.value?.clearValidate(), 0)
+}
+
+const submitPasswordChange = () => {
+  passwordFormRef.value?.validate(async (valid) => {
+    if (!valid) return
+    if (passwordForm.old_password === passwordForm.new_password) {
+      ElMessage.warning('新密码不能与旧密码相同')
+      return
+    }
+
+    passwordSubmitting.value = true
+    try {
+      const res: any = await request.put('/users/me/password', {
+        old_password: passwordForm.old_password,
+        new_password: passwordForm.new_password
+      })
+      if (res.code === 200) {
+        passwordDialogVisible.value = false
+        userStore.logout()
+        await router.replace('/login')
+        ElMessage.success(res.msg || '密码已修改，请重新登录')
+      }
+    } finally {
+      passwordSubmitting.value = false
+    }
+  })
+}
+
 const handleCommand = (command: string) => {
+  if (command === 'change-password') {
+    openPasswordDialog()
+    return
+  }
+
   if (command === 'logout') {
     ElMessageBox.confirm('确定要退出登录吗?', '提示', {
       confirmButtonText: '确定',
