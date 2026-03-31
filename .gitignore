@@ -1,5 +1,8 @@
 # CMake 构建产物
+build/
 backend/build/
+backend/build-wsl/
+backend/build-win/
 
 # 编译器生成的临时文件
 *.o
@@ -10,7 +13,8 @@ backend/build/
 # 可执行文件（不提交编译产物）
 backend/build/community_health_server
 backend/build/community_health_tests
-backend/build-win
+backend/build-wsl/community_health_server
+backend/build-wsl/community_health_tests
 
 # macOS
 .DS_Store
@@ -31,6 +35,7 @@ backend/Testing/
 
 # Playwright / 前端联调用临时产物
 node_modules/
+vue-frontend/dist/
 test-results/
 plans/frontend-vue-test-report.json
 package.json
