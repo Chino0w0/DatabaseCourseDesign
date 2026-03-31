@@ -12,8 +12,23 @@
       <el-button class="filter-item" type="primary" icon="Search" @click="handleFilter">
         搜索
       </el-button>
-      <el-button class="filter-item" type="success" icon="Plus" @click="handleCreate">
+      <el-button
+        v-if="userStore.canWriteResident"
+        class="filter-item"
+        type="success"
+        icon="Plus"
+        @click="handleCreate"
+      >
         新增居民档案
+      </el-button>
+      <el-button
+        v-if="userStore.canWriteResident"
+        class="filter-item"
+        type="warning"
+        icon="OfficeBuilding"
+        @click="handleCreateCommunity"
+      >
+        新增社区
       </el-button>
     </div>
 
@@ -31,10 +46,16 @@
       <el-table-column prop="phone" label="联系电话" width="130" />
       <el-table-column prop="community_name" label="所属社区" width="150" />
       <el-table-column prop="address" label="详细地址" min-width="200" show-overflow-tooltip />
-      <el-table-column label="操作" width="220" align="center" fixed="right">
+      <el-table-column v-if="userStore.canWriteResident" label="操作" width="220" align="center" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" size="small" icon="Edit" @click="handleUpdate(row)">编辑</el-button>
-          <el-button type="danger" size="small" icon="Delete" @click="handleDelete(row)">删除</el-button>
+          <el-button
+            v-if="userStore.canDeleteResident"
+            type="danger"
+            size="small"
+            icon="Delete"
+            @click="handleDelete(row)"
+          >删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -51,6 +72,27 @@
         @current-change="handleCurrentChange"
       />
     </div>
+
+    <!-- 新增社区弹窗 -->
+    <el-dialog title="新增社区" v-model="communityDialogVisible" width="520px">
+      <el-form ref="communityFormRef" :rules="communityRules" :model="communityTemp" label-position="right" label-width="100px">
+        <el-form-item label="社区名称" prop="name">
+          <el-input v-model="communityTemp.name" placeholder="请输入社区名称" />
+        </el-form-item>
+        <el-form-item label="社区地址" prop="address">
+          <el-input v-model="communityTemp.address" placeholder="请输入社区地址" />
+        </el-form-item>
+        <el-form-item label="联系电话" prop="contact_phone">
+          <el-input v-model="communityTemp.contact_phone" placeholder="请输入联系电话" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="communityDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="communitySubmitLoading" @click="createCommunity">确 定</el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog :title="dialogStatus==='create' ? '新增居民档案' : '编辑居民档案'" v-model="dialogFormVisible" width="600px">
@@ -133,21 +175,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import request from '@/utils/request'
+import { useUserStore } from '@/store/user'
+
+const userStore = useUserStore()
+const residentSearchStorageKey = 'resident_list_query'
 
 const listLoading = ref(false)
 const list = ref([])
 const total = ref(0)
 const communities = ref<any[]>([])
 
+const storedResidentQuery = (() => {
+  try {
+    return JSON.parse(sessionStorage.getItem(residentSearchStorageKey) || 'null')
+  } catch (_err) {
+    return null
+  }
+})()
+
 const listQuery = reactive({
-  page: 1,
-  size: 10,
-  keyword: undefined
+  page: Number(storedResidentQuery?.page) > 0 ? Number(storedResidentQuery.page) : 1,
+  size: Number(storedResidentQuery?.size) > 0 ? Number(storedResidentQuery.size) : 10,
+  keyword: typeof storedResidentQuery?.keyword === 'string' ? storedResidentQuery.keyword : undefined
 })
+
+const persistListQuery = () => {
+  sessionStorage.setItem(residentSearchStorageKey, JSON.stringify({
+    page: listQuery.page,
+    size: listQuery.size,
+    keyword: listQuery.keyword || ''
+  }))
+}
 
 const getList = async () => {
   listLoading.value = true
@@ -165,7 +227,9 @@ const getList = async () => {
 const getCommunities = async () => {
   try {
     const res: any = await request.get('/communities')
-    if (res.code === 200) communities.value = res.data.list || []
+    if (res.code === 200) {
+      communities.value = Array.isArray(res.data) ? res.data : (res.data.list || [])
+    }
   } catch (err) {}
 }
 
@@ -182,6 +246,55 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   listQuery.page = val
   getList()
+}
+
+const communityDialogVisible = ref(false)
+const communityFormRef = ref<FormInstance>()
+const communitySubmitLoading = ref(false)
+const communityTemp = reactive({
+  name: '',
+  address: '',
+  contact_phone: ''
+})
+const communityRules = reactive<FormRules>({
+  name: [{ required: true, message: '请输入社区名称', trigger: 'blur' }]
+})
+
+const resetCommunityTemp = () => {
+  communityTemp.name = ''
+  communityTemp.address = ''
+  communityTemp.contact_phone = ''
+}
+
+const handleCreateCommunity = () => {
+  if (!userStore.canWriteResident) {
+    ElMessage.warning('当前角色无权管理社区')
+    return
+  }
+  resetCommunityTemp()
+  communityDialogVisible.value = true
+  setTimeout(() => communityFormRef.value?.clearValidate(), 0)
+}
+
+const createCommunity = () => {
+  communityFormRef.value?.validate(async (valid) => {
+    if (valid) {
+      communitySubmitLoading.value = true
+      try {
+        const res: any = await request.post('/communities', communityTemp)
+        if (res.code === 200) {
+          ElMessage.success('社区新增成功')
+          communityDialogVisible.value = false
+          await getCommunities()
+          if (!temp.community_id && communities.value.length > 0) {
+            temp.community_id = communities.value[communities.value.length - 1]?.id
+          }
+        }
+      } finally {
+        communitySubmitLoading.value = false
+      }
+    }
+  })
 }
 
 // 弹窗表单控制
@@ -224,6 +337,10 @@ const resetTemp = () => {
 }
 
 const handleCreate = () => {
+  if (!userStore.canWriteResident) {
+    ElMessage.warning('当前角色无权新增居民档案')
+    return
+  }
   resetTemp()
   dialogStatus.value = 'create'
   dialogFormVisible.value = true
@@ -249,6 +366,10 @@ const createData = () => {
 }
 
 const handleUpdate = (row: any) => {
+  if (!userStore.canWriteResident) {
+    ElMessage.warning('当前角色无权编辑居民档案')
+    return
+  }
   Object.assign(temp, row) // 浅拷贝回显
   
   // 处理社区 ID 回填（假设后端没返回 community_id 只有 name，如有需要需特殊处理，这里假定 row 会包含 community_id 或我们在表单需要重新选择）
@@ -281,6 +402,10 @@ const updateData = () => {
 }
 
 const handleDelete = (row: any) => {
+  if (!userStore.canDeleteResident) {
+    ElMessage.warning('当前角色无权删除居民档案')
+    return
+  }
   ElMessageBox.confirm('确定要删除该居民档案吗? 此操作不可逆', '警告', {
     confirmButtonText: '确定删除',
     cancelButtonText: '取消',
@@ -301,4 +426,12 @@ onMounted(() => {
   getCommunities() // 加载字典
   getList()
 })
+
+watch(
+  () => [listQuery.page, listQuery.size, listQuery.keyword],
+  () => {
+    persistListQuery()
+  },
+  { deep: true }
+)
 </script>

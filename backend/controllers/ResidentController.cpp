@@ -14,6 +14,8 @@
 
 namespace {
 
+const std::vector<int> kResidentWriteRoleIds{1, 2};
+
 void logServerError(const char *context, const std::exception &e) {
   std::cerr << "[ResidentController] " << context << ": " << e.what()
             << std::endl;
@@ -48,7 +50,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
   // ──────────────────────────────────────────────────────────
   svr.Post("/api/v1/communities", [](const httplib::Request &req,
                                      httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kResidentWriteRoleIds);
     if (!currentUser.has_value()) {
       return;
     }
@@ -137,7 +140,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
   // ──────────────────────────────────────────────────────────
   svr.Post("/api/v1/residents", [](const httplib::Request &req,
                                    httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kResidentWriteRoleIds);
     if (!currentUser.has_value()) {
       return;
     }
@@ -165,7 +169,8 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
   // ──────────────────────────────────────────────────────────
   svr.Put(R"(/api/v1/residents/(\d+))", [](const httplib::Request &req,
                                            httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kResidentWriteRoleIds);
     if (!currentUser.has_value()) {
       return;
     }
@@ -195,26 +200,27 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
   // ──────────────────────────────────────────────────────────
   // DELETE /api/v1/residents/:id — 删除居民
   // ──────────────────────────────────────────────────────────
-  svr.Delete(R"(/api/v1/residents/(\d+))",
-             [](const httplib::Request &req, httplib::Response &res) {
-               auto currentUser = AuthSessionManager::requireUser(req, res);
-               if (!currentUser.has_value()) {
-                 return;
-               }
-               ResponseHelper::setCorsHeaders(res);
-               try {
-                 int id = std::stoi(req.matches[1]);
-                 ResidentService svc;
-                 bool ok = svc.deleteResident(id);
+  svr.Delete(R"(/api/v1/residents/(\d+))", [](const httplib::Request &req,
+                                              httplib::Response &res) {
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kResidentWriteRoleIds);
+    if (!currentUser.has_value()) {
+      return;
+    }
+    ResponseHelper::setCorsHeaders(res);
+    try {
+      int id = std::stoi(req.matches[1]);
+      ResidentService svc;
+      bool ok = svc.deleteResident(id);
 
-                 if (!ok) {
-                   ResponseHelper::fail(res, 404, "居民不存在");
-                   return;
-                 }
-                 ResponseHelper::ok(res, nullptr, "删除居民成功");
-               } catch (const std::exception &e) {
-                 logServerError("deleteResident", e);
-                 ResponseHelper::fail(res, 500, "删除居民失败，请稍后重试");
-               }
-             });
+      if (!ok) {
+        ResponseHelper::fail(res, 404, "居民不存在");
+        return;
+      }
+      ResponseHelper::ok(res, nullptr, "删除居民成功");
+    } catch (const std::exception &e) {
+      logServerError("deleteResident", e);
+      ResponseHelper::fail(res, 500, "删除居民失败，请稍后重试");
+    }
+  });
 }

@@ -118,20 +118,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
+const visitSearchStorageKey = 'visit_view_query'
+
+const storedVisitQuery = (() => {
+  try {
+    return JSON.parse(sessionStorage.getItem(visitSearchStorageKey) || 'null')
+  } catch (_err) {
+    return null
+  }
+})()
 
 const searchLoading = ref(false)
 const residentOptions = ref<any[]>([])
-const selectedResidentId = ref<number | undefined>(undefined)
+const selectedResidentId = ref<number | undefined>(
+  Number(route.query.resident_id || storedVisitQuery?.resident_id || 0) > 0
+    ? Number(route.query.resident_id || storedVisitQuery?.resident_id)
+    : undefined
+)
 
 const listLoading = ref(false)
 const visits = ref<any[]>([])
+
+const ensureResidentOption = async (residentId: number) => {
+  if (residentOptions.value.some(item => item.id === residentId)) {
+    return
+  }
+  try {
+    const res: any = await request.get(`/residents/${residentId}`)
+    if (res.code === 200 && res.data) {
+      residentOptions.value = [res.data, ...residentOptions.value.filter(item => item.id !== residentId)]
+    }
+  } catch (_err) {}
+}
 
 const searchResidents = async (query: string) => {
   if (query) {
@@ -146,6 +174,30 @@ const searchResidents = async (query: string) => {
     }
   } else {
     residentOptions.value = []
+  }
+}
+
+const persistResidentSelection = () => {
+  if (selectedResidentId.value) {
+    sessionStorage.setItem(visitSearchStorageKey, JSON.stringify({ resident_id: selectedResidentId.value }))
+  } else {
+    sessionStorage.removeItem(visitSearchStorageKey)
+  }
+}
+
+const syncResidentQuery = () => {
+  const residentId = selectedResidentId.value
+  const currentResidentId = route.query.resident_id
+
+  if (!residentId) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.resident_id
+    router.replace({ query: nextQuery })
+    return
+  }
+
+  if (String(currentResidentId || '') !== String(residentId)) {
+    router.replace({ query: { ...route.query, resident_id: String(residentId) } })
   }
 }
 
@@ -186,6 +238,14 @@ const rules = reactive<FormRules>({
 })
 
 const handleCreate = () => {
+  if (!userStore.canWriteVisit) {
+    ElMessage.warning('当前角色无权新增随访记录')
+    return
+  }
+  if (!selectedResidentId.value) {
+    ElMessage.warning('请先选择居民再新增随访记录')
+    return
+  }
   temp.visit_date = getTodayDate()
   temp.visit_type = '上门随访'
   temp.content = ''
@@ -195,6 +255,15 @@ const handleCreate = () => {
 }
 
 const createData = () => {
+  if (!userStore.canWriteVisit) {
+    ElMessage.warning('当前角色无权新增随访记录')
+    return
+  }
+  if (!selectedResidentId.value) {
+    ElMessage.warning('请先选择居民再新增随访记录')
+    return
+  }
+
   dataFormRef.value?.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
@@ -216,4 +285,16 @@ const createData = () => {
     }
   })
 }
+
+onMounted(async () => {
+  if (selectedResidentId.value) {
+    await ensureResidentOption(selectedResidentId.value)
+    getVisits()
+  }
+})
+
+watch(selectedResidentId, () => {
+  syncResidentQuery()
+  persistResidentSelection()
+})
 </script>

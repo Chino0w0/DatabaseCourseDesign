@@ -129,6 +129,12 @@ const getDashboardStats = async () => {
     if (comRes.code === 200) {
       statistics.hyperCount = comRes.data.list?.length || comRes.data.length || 0
     }
+
+    // 3. 获取异常预警数
+    const warningRes: any = await request.get('/health/warnings/count')
+    if (warningRes.code === 200) {
+      statistics.diabeticCount = warningRes.data.count || 0
+    }
   } catch (err) {}
 }
 

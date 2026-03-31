@@ -12,6 +12,11 @@
 
 namespace {
 
+const std::vector<int> kHealthReadRoleIds{1, 2, 3};
+const std::vector<int> kHealthWriteRoleIds{1, 2, 3};
+const std::vector<int> kHealthRecordWriteRoleIds{1, 2};
+const std::vector<int> kHealthWarningReadRoleIds{1, 2, 3};
+
 void sendOk(httplib::Response &res, const json &data,
             const std::string &msg = "操作成功") {
   ResponseHelper::setCorsHeaders(res);
@@ -54,7 +59,8 @@ void HealthController::registerRoutes(httplib::Server &svr) {
   // GET /api/v1/health/measurements?resident_id=1&limit=50
   svr.Get("/api/v1/health/measurements", [](const httplib::Request &req,
                                             httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kHealthReadRoleIds);
     if (!currentUser.has_value()) {
       return;
     }
@@ -89,7 +95,8 @@ void HealthController::registerRoutes(httplib::Server &svr) {
   // POST /api/v1/health/measurements
   svr.Post("/api/v1/health/measurements", [](const httplib::Request &req,
                                              httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kHealthWriteRoleIds);
     if (!currentUser.has_value()) {
       return;
     }
@@ -113,10 +120,42 @@ void HealthController::registerRoutes(httplib::Server &svr) {
     }
   });
 
+  // PUT /api/v1/health/measurements/{id}
+  svr.Put(R"(/api/v1/health/measurements/(\d+))",
+          [](const httplib::Request &req, httplib::Response &res) {
+            auto currentUser =
+                AuthSessionManager::requireUser(req, res, kHealthWriteRoleIds);
+            if (!currentUser.has_value()) {
+              return;
+            }
+
+            try {
+              const int measurement_id =
+                  std::atoi(std::string(req.matches[1]).c_str());
+              json body;
+              if (!parseJsonBody(req, res, body))
+                return;
+
+              HealthService svc;
+              json data = svc.updateMeasurement(measurement_id, body);
+              if (data.is_object() && data.contains("error")) {
+                const bool not_found = data.value("not_found", false);
+                sendFail(res, not_found ? 404 : 400,
+                         data["error"].get<std::string>());
+                return;
+              }
+              sendOk(res, data, "更新测量数据成功");
+            } catch (const std::exception &e) {
+              logServerError("updateMeasurement", e);
+              sendFail(res, 500, "更新测量数据失败，请稍后重试");
+            }
+          });
+
   // GET /api/v1/health/records/{resident_id}
   svr.Get(R"(/api/v1/health/records/(\d+))", [](const httplib::Request &req,
                                                 httplib::Response &res) {
-    auto currentUser = AuthSessionManager::requireUser(req, res);
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kHealthReadRoleIds);
     if (!currentUser.has_value()) {
       return;
     }
@@ -138,6 +177,54 @@ void HealthController::registerRoutes(httplib::Server &svr) {
     } catch (const std::exception &e) {
       logServerError("getHealthRecord", e);
       sendFail(res, 500, "查询健康档案失败，请稍后重试");
+    }
+  });
+
+  // PUT /api/v1/health/records/{resident_id}
+  svr.Put(R"(/api/v1/health/records/(\d+))", [](const httplib::Request &req,
+                                                httplib::Response &res) {
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kHealthRecordWriteRoleIds);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
+    try {
+      const int resident_id = std::atoi(std::string(req.matches[1]).c_str());
+      json body;
+      if (!parseJsonBody(req, res, body))
+        return;
+
+      HealthService svc;
+      json data = svc.updateHealthRecord(resident_id, body);
+      if (data.is_object() && data.contains("error")) {
+        const bool not_found = data.value("not_found", false);
+        sendFail(res, not_found ? 404 : 400, data["error"].get<std::string>());
+        return;
+      }
+      sendOk(res, data, "更新健康档案成功");
+    } catch (const std::exception &e) {
+      logServerError("updateHealthRecord", e);
+      sendFail(res, 500, "更新健康档案失败，请稍后重试");
+    }
+  });
+
+  // GET /api/v1/health/warnings/count
+  svr.Get("/api/v1/health/warnings/count", [](const httplib::Request &req,
+                                              httplib::Response &res) {
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kHealthWarningReadRoleIds);
+    if (!currentUser.has_value()) {
+      return;
+    }
+
+    try {
+      HealthService svc;
+      json data = svc.getWarningCount();
+      sendOk(res, data, "查询成功");
+    } catch (const std::exception &e) {
+      logServerError("getWarningCount", e);
+      sendFail(res, 500, "查询异常预警统计失败，请稍后重试");
     }
   });
 }

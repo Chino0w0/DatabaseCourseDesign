@@ -16,4 +16,5 @@ struct User {
   std::string updatedAt;
   int roleId = 0;
   std::string roleName;
+  int residentId = 0;
 };

@@ -39,6 +39,7 @@ User mapUserRow(MYSQL_ROW row) {
   user.updatedAt = safeString(row[7]);
   user.roleId = safeInt(row[8]);
   user.roleName = safeString(row[9]);
+  user.residentId = safeInt(row[10]);
   return user;
 }
 
@@ -53,10 +54,12 @@ std::string selectUserBaseSql() {
          "COALESCE(DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s'), ''), "
          "COALESCE(DATE_FORMAT(u.updated_at, '%Y-%m-%d %H:%i:%s'), ''), "
          "COALESCE(ur.role_id, 0), "
-         "COALESCE(r.role_name, '') "
+         "COALESCE(r.role_name, ''), "
+         "COALESCE(ra.resident_id, 0) "
          "FROM users u "
          "LEFT JOIN user_roles ur ON u.id = ur.user_id "
-         "LEFT JOIN roles r ON ur.role_id = r.id ";
+         "LEFT JOIN roles r ON ur.role_id = r.id "
+         "LEFT JOIN resident_accounts ra ON u.id = ra.user_id ";
 }
 
 } // namespace

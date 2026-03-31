@@ -12,6 +12,9 @@
 
 namespace {
 
+const std::vector<int> kVisitReadRoleIds{1, 2, 3};
+const std::vector<int> kVisitWriteRoleIds{1, 2};
+
 void sendOk(httplib::Response &res, const json &data,
             const std::string &msg = "操作成功") {
   ResponseHelper::setCorsHeaders(res);
@@ -53,7 +56,8 @@ void VisitController::registerRoutes(httplib::Server &svr) {
   // GET /api/v1/visits?resident_id=1
   svr.Get("/api/v1/visits",
           [](const httplib::Request &req, httplib::Response &res) {
-            auto currentUser = AuthSessionManager::requireUser(req, res);
+            auto currentUser =
+                AuthSessionManager::requireUser(req, res, kVisitReadRoleIds);
             if (!currentUser.has_value())
               return;
             try {
@@ -81,7 +85,8 @@ void VisitController::registerRoutes(httplib::Server &svr) {
   // POST /api/v1/visits
   svr.Post("/api/v1/visits",
            [](const httplib::Request &req, httplib::Response &res) {
-             auto currentUser = AuthSessionManager::requireUser(req, res);
+             auto currentUser =
+                 AuthSessionManager::requireUser(req, res, kVisitWriteRoleIds);
              if (!currentUser.has_value())
                return;
              try {

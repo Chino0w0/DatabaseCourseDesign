@@ -1,0 +1,5 @@
+/mnt/e/CppTrainingProject/DatabaseCourseDesign/backend/build-wsl/CMakeFiles/community_health_server.dir
+/mnt/e/CppTrainingProject/DatabaseCourseDesign/backend/build-wsl/CMakeFiles/community_health_tests.dir
+/mnt/e/CppTrainingProject/DatabaseCourseDesign/backend/build-wsl/CMakeFiles/test.dir
+/mnt/e/CppTrainingProject/DatabaseCourseDesign/backend/build-wsl/CMakeFiles/edit_cache.dir
+/mnt/e/CppTrainingProject/DatabaseCourseDesign/backend/build-wsl/CMakeFiles/rebuild_cache.dir
