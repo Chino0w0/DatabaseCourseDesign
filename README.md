@@ -18,7 +18,8 @@
   - [常用命令速查](#常用命令速查)
   - [访问地址](#访问地址)
 - [Windows 使用说明](#windows-使用说明)
-  - [原生 Windows（MSYS2 / MinGW）](#原生-windowsmsys2--mingw)
+  - [优先方案：使用 Release 包（免编译）](#优先方案使用-release-包免编译)
+  - [备选方案：不使用 Release 包（源码编译）](#备选方案不使用-release-包源码编译)
   - [WSL（推荐）](#wsl推荐)
 - [常见问题](#常见问题)
 - [API 说明](#api-说明)
@@ -297,7 +298,62 @@ export DB_PASS='你的密码'
 
 ## Windows 使用说明
 
-### 原生 Windows（MSYS2 / MinGW）
+### 优先方案：使用 Release 包（免编译）
+
+如果你只是想在 Windows 上快速运行项目，建议**优先使用 Release 页面提供的压缩包**（已预编译），无需在本地安装 C++ 编译链。
+
+#### 1. 下载并解压 Release 包
+
+从仓库 Release 页面下载对应的 Windows 包，解压到任意目录（例如 `D:\community-health`）。
+
+#### 2. 初始化数据库
+
+参考 [数据库初始化](#数据库初始化) 章节执行 SQL 脚本，至少执行：
+
+```bash
+mysql -u root -p < sql/init.sql
+mysql -u root -p < sql/permissions.sql
+```
+
+#### 3. 启动后端程序
+
+进入解压目录后，按你使用的终端设置环境变量并启动 `community_health_server.exe`。
+
+**PowerShell：**
+
+```powershell
+$env:DB_HOST = "127.0.0.1"
+$env:DB_PORT = "3306"
+$env:DB_USER = "ch_admin"
+$env:DB_PASS = "你的数据库密码"
+$env:DB_NAME = "community_health"
+.\community_health_server.exe
+```
+
+**CMD：**
+
+```cmd
+set DB_HOST=127.0.0.1
+set DB_PORT=3306
+set DB_USER=ch_admin
+set DB_PASS=你的数据库密码
+set DB_NAME=community_health
+community_health_server.exe
+```
+
+#### 4. 访问系统
+
+浏览器打开：
+
+```text
+http://127.0.0.1:8080
+```
+
+---
+
+### 备选方案：不使用 Release 包（源码编译）
+
+如果你不使用 Release 包，需要在 Windows 本地先完成编译，再运行。
 
 #### 1. 安装依赖
 
@@ -488,4 +544,3 @@ cd vue-frontend && npm install && npm run build
 ## License
 
 本项目基于 [GPL-3.0](LICENSE) 协议开源。
-
