@@ -314,6 +314,10 @@ void UserController::registerRoutes(httplib::Server &svr) {
         sendFail(res, 400, "新密码不能与旧密码相同");
         return;
       }
+      if (newPassword.size() < 6) {
+        sendFail(res, 400, "新密码长度不能少于 6 位");
+        return;
+      }
 
       UserDAO userDao;
       if (!userDao.verifyPassword(currentUser->id, oldPassword)) {
