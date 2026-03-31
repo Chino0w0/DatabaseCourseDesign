@@ -2,109 +2,198 @@
 
 > 基于前后端分离架构的社区健康档案管理系统课程设计项目。
 
-## 项目说明
+---
 
-本项目当前同时包含三部分：
+## 目录
 
-- `backend/`：C++17 后端服务
-- `vue-frontend/`：Vue 3 现代前端
-- `frontend_old/`：旧版原生静态前端
+- [项目简介](#项目简介)
+- [功能概览](#功能概览)
+- [技术架构](#技术架构)
+- [目录结构](#目录结构)
+- [默认账号](#默认账号)
+- [数据库初始化](#数据库初始化)
+- [Linux / WSL 使用说明](#linux--wsl-使用说明)
+  - [系统依赖安装](#系统依赖安装)
+  - [启动与停止](#启动与停止)
+  - [常用命令速查](#常用命令速查)
+  - [访问地址](#访问地址)
+- [Windows 使用说明](#windows-使用说明)
+  - [原生 Windows（MSYS2 / MinGW）](#原生-windowsmsys2--mingw)
+  - [WSL（推荐）](#wsl推荐)
+- [常见问题](#常见问题)
+- [API 说明](#api-说明)
+- [License](#license)
 
-其中：
+---
 
-- Linux / WSL / 服务器环境：使用项目根目录的 `start_linux.sh`
-- Windows 发布包：只看 `release/` 目录中的说明与脚本
+## 项目简介
+
+本系统是面向社区卫生管理场景的健康档案信息化平台，支持管理员、医生、护士与居民四类角色，覆盖居民档案管理、健康体检记录、慢性病追踪与随访管理等核心业务流程。
+
+系统采用前后端分离设计：
+
+- 后端以 **C++17 + cpp-httplib** 构建 HTTP JSON API，并同时托管前端静态资源
+- 前端以 **Vue 3 + Vite + TypeScript** 实现，打包后由后端直接伺服
+- 数据库使用 **MySQL 8.x / MariaDB**
+
+---
+
+## 功能概览
+
+### 所有角色通用
+| 功能 | 说明 |
+|------|------|
+| 登录 / 登出 | 基于 Token 的会话管理 |
+| 修改自己的密码 | 修改成功后当前会话立即失效，需重新登录 |
+
+### 管理员（admin）
+| 功能 | 说明 |
+|------|------|
+| 数据概览 | 系统整体统计指标与快捷操作向导 |
+| 居民管理 | 新增 / 查询 / 编辑 / 删除居民档案与社区信息 |
+| 健康档案 | 查询健康档案、录入 / 编辑体检记录、查看异常预警 |
+| 随访管理 | 查询 / 新增 / 编辑随访记录 |
+| 系统管理 | 新增 / 编辑 / 启用禁用系统账户；重置用户密码（被重置用户将被强制下线） |
+
+### 医生 / 护士
+| 功能 | 说明 |
+|------|------|
+| 数据概览 | 查看整体统计 |
+| 居民管理 | 查询居民档案（无删除权限） |
+| 健康档案 | 录入 / 编辑体检记录、查看异常预警 |
+| 随访管理 | 新增 / 编辑随访记录 |
+
+### 居民
+| 功能 | 说明 |
+|------|------|
+| 我的健康档案 | 仅查看本人健康测量记录与健康摘要信息 |
+
+---
 
 ## 技术架构
 
 ```text
-Vue3 / 原生静态前端  <--HTTP JSON API-->  C++17 后端 (cpp-httplib)
-                                           |
-                                           +-- MySQL / MariaDB
+Vue3 前端 (Vite 开发服务 / dist 静态产物)
+        │
+        │  HTTP JSON API
+        ▼
+C++17 后端 (cpp-httplib)  ←→  MySQL 8.x / MariaDB
 ```
 
 | 层级 | 技术选型 |
 |------|---------|
-| 前端（现代） | Vue 3 + Vite + TypeScript |
-| 前端（旧版） | HTML + JavaScript |
+| 现代前端 | Vue 3 + Vite + TypeScript + Element Plus |
+| 旧版前端（备用） | HTML + JavaScript（托管于 `frontend_old/`） |
 | 后端 | C++17 + cpp-httplib + nlohmann/json |
 | 数据库 | MySQL 8.x / MariaDB |
 | 构建 | CMake + Make |
+| 认证 | Token（SHA-256，内存 Session 管理） |
+
+---
 
 ## 目录结构
 
 ```text
 DatabaseCourseDesign/
 ├── backend/                 # C++ 后端源码
+│   ├── controllers/         # HTTP 路由处理
+│   ├── services/            # 业务逻辑
+│   ├── dao/                 # 数据库访问
+│   ├── models/              # 数据模型
+│   ├── utils/               # 工具类（会话、数据库、响应封装）
+│   ├── include/             # 第三方头文件（httplib、json）
+│   ├── tests/               # 后端单元 / 集成测试
+│   ├── main.cpp             # 服务启动入口
+│   └── CMakeLists.txt       # 后端构建配置
 ├── vue-frontend/            # Vue 3 前端源码
-├── frontend_old/            # 旧版静态前端
-├── sql/                     # 数据库初始化脚本
+│   ├── src/
+│   │   ├── layout/          # 整体布局（含顶栏菜单与修改密码弹窗）
+│   │   ├── views/           # 各业务页面
+│   │   ├── router/          # 前端路由
+│   │   ├── store/           # 用户状态
+│   │   └── utils/           # 请求封装
+│   └── vite.config.ts       # Vite 构建配置
+├── frontend_old/            # 旧版原生静态前端（备用）
+├── sql/                     # 数据库脚本
+│   ├── init.sql             # 建表 + 默认管理员账号
+│   ├── views.sql            # 视图
+│   ├── procedures.sql       # 存储过程
+│   ├── triggers.sql         # 触发器
+│   ├── permissions.sql      # 数据库账户权限
+│   └── seed.sql             # 测试种子数据（医生、护士、居民示例账号）
 ├── docs/                    # 项目文档
-├── release/                 # 仅 Windows 发布包说明与脚本
-├── start_linux.sh           # Linux / WSL 启动入口
-├── Makefile                 # Linux 构建/运行目标
-└── README.md                # 当前说明文档
+├── Makefile                 # Linux 构建 / 运行目标
+├── start_linux.sh           # Linux / WSL 一键启动脚本
+└── README.md                # 本文档
 ```
-
-## 运行方式总览
-
-### 1. Windows 用户
-
-如果你使用的是已经打包好的 Windows 发布包，请直接阅读：
-
-- `release/README.md`
-
-不要把 `release/` 的启动方式和 Linux 启动方式混用。
-
-### 2. Linux / WSL / 服务器用户
-
-请使用项目根目录的：
-
-- `./start_linux.sh`
-
-本 README 下面的内容主要说明 Linux / WSL 的安装与启动。
 
 ---
 
-# Linux / WSL 启动说明
+## 默认账号
 
-## 一、依赖准备
+执行 `sql/init.sql` 后自动创建管理员账号，执行 `sql/seed.sql` 后额外创建以下测试账号（密码均为 `123456`）：
 
-### 1. 基础工具
+| 用户名 | 角色 | 说明 |
+|--------|------|------|
+| `admin` | 管理员 | 默认管理员，`sql/init.sql` 创建 |
+| `doctor_zhang` | 医生 | 张伟医生 |
+| `doctor_li` | 医生 | 李华医生 |
+| `nurse_wang` | 护士 | 王芳护士 |
+| `resident_zhangsan` | 居民 | 居民自助账号（绑定张三档案） |
 
-至少需要：
+---
 
-- `bash`
-- `make`
-- `cmake`
-- `g++` 或 `clang++`
-- `git`（仅当本地第三方头文件不完整时才需要）
-- `mysql` 客户端（用于手动初始化数据库时可选）
+## 数据库初始化
 
-### 2. MySQL / MariaDB 开发库
+首次使用前请依次执行以下 SQL 脚本：
 
-后端链接数据库时，需要系统安装 MySQL 或 MariaDB 的开发包。
+```bash
+# 1. 建表 + 角色 + 默认管理员账号
+mysql -u root -p < sql/init.sql
+
+# 2. 视图
+mysql -u root -p < sql/views.sql
+
+# 3. 存储过程
+mysql -u root -p < sql/procedures.sql
+
+# 4. 触发器
+mysql -u root -p < sql/triggers.sql
+
+# 5. 数据库账户权限（用于 ch_admin 账号）
+mysql -u root -p < sql/permissions.sql
+
+# 6. 测试种子数据（可选，推荐演示时使用）
+mysql -u root -p < sql/seed.sql
+```
+
+> **最少执行**：`init.sql` + `permissions.sql`，如需完整演示请执行全部 6 个脚本。
+
+---
+
+## Linux / WSL 使用说明
+
+### 系统依赖安装
 
 #### Ubuntu / Debian
 
-推荐安装：
-
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake make pkg-config default-libmysqlclient-dev mysql-client
+sudo apt install -y build-essential cmake make pkg-config \
+    default-libmysqlclient-dev mysql-client git
 ```
 
-如果你的系统没有 `default-libmysqlclient-dev`，也可以用：
+如需运行 Vue 3 开发前端，还需要 Node.js：
 
 ```bash
-sudo apt update
-sudo apt install -y build-essential cmake make pkg-config libmariadb-dev mysql-client
+sudo apt install -y nodejs npm
 ```
 
 #### Fedora / RHEL / CentOS Stream
 
 ```bash
-sudo dnf install -y gcc-c++ cmake make pkgconf-pkg-config mariadb-connector-c-devel mysql
+sudo dnf install -y gcc-c++ cmake make pkgconf-pkg-config \
+    mariadb-connector-c-devel mysql
 ```
 
 #### Arch Linux
@@ -113,207 +202,290 @@ sudo dnf install -y gcc-c++ cmake make pkgconf-pkg-config mariadb-connector-c-de
 sudo pacman -S --needed base-devel cmake pkgconf mariadb-libs mysql-clients
 ```
 
-### 3. 前端运行依赖
+---
 
-如果你要运行 Vue 3 开发前端，还需要：
+### 启动与停止
 
-- `node`
-- `npm`
+项目提供两个等价的入口：
 
-Ubuntu / Debian 示例：
+| 入口 | 适用场景 |
+|------|---------|
+| [`./start_linux.sh`](start_linux.sh) | 更友好的参数解析，推荐日常使用 |
+| `make <target>` | 直接调用 Makefile 目标 |
 
-```bash
-sudo apt install -y nodejs npm
-```
-
-如果你只运行后端并使用已经构建好的静态页面，Node 不是必须的。
-
-## 二、数据库初始化
-
-首次使用前，请先准备数据库并导入脚本。
-
-建议执行顺序：
-
-1. `sql/init.sql`
-2. `sql/views.sql`
-3. `sql/procedures.sql`
-4. `sql/triggers.sql`
-5. `sql/permissions.sql`
-6. `sql/seed.sql`
-
-最基础至少要执行：
-
-- `sql/init.sql`
-- `sql/seed.sql`
-
-示例：
+#### 1. 前台运行（推荐演示时使用，Ctrl+C 停止）
 
 ```bash
-mysql -u root -p < sql/init.sql
-mysql -u root -p < sql/views.sql
-mysql -u root -p < sql/procedures.sql
-mysql -u root -p < sql/triggers.sql
-mysql -u root -p < sql/permissions.sql
-mysql -u root -p < sql/seed.sql
+./start_linux.sh run --db-pass='你的数据库密码'
 ```
 
-## 三、Linux 启动脚本的目标
-
-`start_linux.sh` 的目标是让 Linux 用户尽量做到：
-
-- 下载项目
-- 安装系统依赖
-- 导入数据库
-- 通过脚本传入参数直接启动
-
-也就是说，数据库连接参数不要求写死到代码里，而是通过脚本参数或环境变量传入。
-
-## 四、最常用启动命令
-
-### 1. 前台启动后端 + 静态页面托管
+#### 2. 后台运行
 
 ```bash
-./start_linux.sh run --db-host=127.0.0.1 --db-port=3306 --db-user=ch_admin --db-pass='你的数据库密码' --db-name=community_health --port=8080
+./start_linux.sh start --db-pass='你的数据库密码'
 ```
 
-### 2. 后台启动
+如果数据库密码为空或需要自定义全部参数：
 
 ```bash
-./start_linux.sh start --db-host=127.0.0.1 --db-port=3306 --db-user=ch_admin --db-pass='你的数据库密码' --db-name=community_health --port=8080
+./start_linux.sh start \
+  --db-host=127.0.0.1 \
+  --db-port=3306 \
+  --db-user=ch_admin \
+  --db-pass='你的密码' \
+  --db-name=community_health \
+  --port=8080
 ```
 
-### 3. 仅编译后端
-
-```bash
-./start_linux.sh build
-```
-
-### 4. 查看状态
-
-```bash
-./start_linux.sh status
-```
-
-### 5. 查看后台日志
-
-```bash
-./start_linux.sh logs
-```
-
-### 6. 停止后台服务
-
-```bash
-./start_linux.sh stop
-```
-
-## 五、脚本支持的参数
-
-`start_linux.sh` 支持以下参数：
-
-- `--db-host=HOST`
-- `--db-port=PORT`
-- `--db-user=USER`
-- `--db-pass=PASSWORD`
-- `--db-name=NAME`
-- `--port=PORT`
-- `--frontend-port=PORT`
-- `--help`
-
-也支持通过环境变量传入：
-
-```bash
-DB_HOST=127.0.0.1 \
-DB_PORT=3306 \
-DB_USER=ch_admin \
-DB_PASS='你的数据库密码' \
-DB_NAME=community_health \
-PORT=8080 \
-./start_linux.sh run
-```
-
-## 六、常用 target
-
-```bash
-./start_linux.sh run
-./start_linux.sh start
-./start_linux.sh stop
-./start_linux.sh restart
-./start_linux.sh status
-./start_linux.sh logs
-./start_linux.sh health
-./start_linux.sh build
-./start_linux.sh clean
-./start_linux.sh run-frontend
-./start_linux.sh start-frontend
-./start_linux.sh run-frontend-old
-./start_linux.sh start-frontend-old
-```
-
-说明：
-
-- `run` / `start` 会构建后端，并尝试托管前端页面
-- `run-frontend` / `start-frontend` 用于单独启动 Vue 3 开发服务
-- `run-frontend-old` / `start-frontend-old` 用于单独启动旧版静态前端
-
-## 七、访问地址
-
-默认情况下：
-
-- 后端服务地址：`http://127.0.0.1:8080`
-- 健康检查接口：`http://127.0.0.1:8080/api/v1/health-check`
-- Vue 开发前端：`http://127.0.0.1:8081`
-
-如果你通过 `--port` 或 `--frontend-port` 传入了新端口，请按实际端口访问。
-
-## 八、常见问题
-
-### 1. CMake 提示找不到 httplib 或 json
-
-本项目优先使用：
-
-- `backend/include/httplib.h`
-- `backend/include/json.hpp`
-
-只有当本地头文件缺失时，才会回退到远程拉取依赖。
-
-### 2. CMake 提示找不到 mysqlclient / mariadb
-
-说明系统缺少数据库开发库，请安装：
-
-- Ubuntu / Debian：`default-libmysqlclient-dev` 或 `libmariadb-dev`
-- Fedora：`mariadb-connector-c-devel`
-- Arch：`mariadb-libs`
-
-### 3. 启动脚本提示必须提供数据库密码
-
-这是刻意设计的安全限制。
-
-如果 target 会启动后端服务，你需要显式传入：
-
-- `--db-pass='你的密码'`
-
-或者先设置环境变量：
+也可以通过环境变量传入：
 
 ```bash
 export DB_PASS='你的密码'
+./start_linux.sh start
 ```
 
-### 4. 启动后浏览器能打开但没有页面
+#### 3. 停止服务
 
-后端会优先挂载：
+```bash
+./start_linux.sh stop
+```
 
-1. `vue-frontend/dist`
-2. `frontend_old`
+#### 4. 重启服务
 
-如果你没有构建 Vue 产物，又不想使用旧版页面，请先进入 `vue-frontend/` 构建前端。
+```bash
+./start_linux.sh restart --db-pass='你的密码'
+```
 
-## 九、开发说明
+#### 5. 仅编译后端，不启动服务
 
-- Linux / WSL 启动：`start_linux.sh`
-- Windows 发布包运行：`release/README.md`
-- 后端构建入口：`backend/CMakeLists.txt`
-- Linux 构建与运行目标：`Makefile`
+```bash
+./start_linux.sh build
+```
 
-## 十、License
+---
 
-- `GPL-3.0`
+### 常用命令速查
+
+| 命令 | 说明 |
+|------|------|
+| `./start_linux.sh run` | 前台启动后端 + 静态页面托管 |
+| `./start_linux.sh start` | 后台启动 |
+| `./start_linux.sh stop` | 停止后台服务 |
+| `./start_linux.sh restart` | 重启后台服务 |
+| `./start_linux.sh status` | 查看服务状态 |
+| `./start_linux.sh logs` | 查看后台日志 |
+| `./start_linux.sh health` | 调用健康检查接口 |
+| `./start_linux.sh build` | 仅编译后端 |
+| `./start_linux.sh clean` | 清理构建目录与运行缓存 |
+| `./start_linux.sh run-frontend` | 单独前台启动 Vue 3 开发服务（需要 Node.js） |
+| `./start_linux.sh start-frontend` | 单独后台启动 Vue 3 开发服务 |
+| `./start_linux.sh run-frontend-old` | 单独前台启动旧版静态前端（需要 Python 3） |
+
+---
+
+### 访问地址
+
+| 地址 | 说明 |
+|------|------|
+| `http://127.0.0.1:8080` | 系统入口（默认端口） |
+| `http://127.0.0.1:8080/api/v1/health-check` | 后端健康检查 |
+| `http://127.0.0.1:8081` | Vue 3 开发服务（`run-frontend` 时使用） |
+
+> 如果你通过 `--port` 指定了不同端口，请将 `8080` 替换为实际端口。
+
+---
+
+## Windows 使用说明
+
+### 原生 Windows（MSYS2 / MinGW）
+
+#### 1. 安装依赖
+
+从 [msys2.org](https://www.msys2.org/) 安装 MSYS2，然后在 UCRT64 Shell 中执行：
+
+```bash
+pacman -S --needed mingw-w64-ucrt-x86_64-gcc \
+    mingw-w64-ucrt-x86_64-cmake \
+    mingw-w64-ucrt-x86_64-ninja \
+    mingw-w64-ucrt-x86_64-libmariadbclient \
+    git
+```
+
+#### 2. 数据库初始化
+
+参考 [数据库初始化](#数据库初始化) 章节，使用 MySQL Workbench / Navicat / DBeaver 等工具手动执行 SQL 脚本，或使用命令行：
+
+```bash
+mysql -u root -p < sql/init.sql
+mysql -u root -p < sql/permissions.sql
+# ... 其余脚本按需执行
+```
+
+#### 3. 编译后端
+
+在 MSYS2 UCRT64 Shell 中，进入项目根目录执行：
+
+```bash
+cmake -S backend -B backend/build -G Ninja
+cmake --build backend/build -j 4
+```
+
+如果 CMake 找不到 MySQL / MariaDB 开发库，需要手动指定：
+
+```bash
+cmake -S backend -B backend/build -G Ninja \
+  -DMYSQLCLIENT_INCLUDE_DIR="C:/msys64/ucrt64/include/mariadb" \
+  -DMYSQLCLIENT_LIBRARY="C:/msys64/ucrt64/lib/libmariadb.dll.a"
+cmake --build backend/build -j 4
+```
+
+#### 4. 启动服务
+
+**PowerShell：**
+
+```powershell
+$env:DB_HOST = "127.0.0.1"
+$env:DB_PORT = "3306"
+$env:DB_USER = "ch_admin"
+$env:DB_PASS = "你的数据库密码"
+$env:DB_NAME = "community_health"
+.\backend\build\community_health_server.exe
+```
+
+**CMD：**
+
+```cmd
+set DB_HOST=127.0.0.1
+set DB_PORT=3306
+set DB_USER=ch_admin
+set DB_PASS=你的数据库密码
+set DB_NAME=community_health
+backend\build\community_health_server.exe
+```
+
+#### 5. 访问系统
+
+浏览器打开：
+
+```text
+http://127.0.0.1:8080
+```
+
+---
+
+### WSL（推荐）
+
+如果你的 Windows 已安装 WSL（Ubuntu / Debian 推荐），可以在 WSL 中像 Linux 一样使用本项目，体验更一致。
+
+#### 1. 进入项目目录
+
+```bash
+# 假设项目在 Windows 的 D: 盘
+cd /mnt/d/DatabaseCourseDesign
+```
+
+#### 2. 安装依赖
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake make pkg-config \
+    default-libmysqlclient-dev mysql-client git
+```
+
+#### 3. 初始化数据库 & 启动服务
+
+与 [Linux / WSL 使用说明](#linux--wsl-使用说明) 完全一致：
+
+```bash
+chmod +x ./start_linux.sh
+./start_linux.sh run --db-pass='你的密码'
+```
+
+#### 4. 在 Windows 终端中调用 WSL 启动
+
+```cmd
+wsl bash -lc "cd /mnt/d/DatabaseCourseDesign && ./start_linux.sh start --db-pass='你的密码'"
+```
+
+---
+
+## 常见问题
+
+### 浏览器无法访问 `127.0.0.1:8080`
+
+- 确认后端服务已启动：`./start_linux.sh status`
+- 确认端口未被占用：`fuser 8080/tcp`
+- 查看启动日志：`./start_linux.sh logs`
+
+### 登录失败 / 提示密码错误
+
+- 确认已执行 `sql/init.sql`
+- 默认管理员账号为 `admin / 123456`
+- 确认环境变量中的数据库配置指向正确的数据库实例
+
+### 后端提示数据库连接失败
+
+- 确认 MySQL 服务已启动
+- 确认 `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASS`、`DB_NAME` 正确
+- 如 `127.0.0.1` 连不上，可尝试改为 `localhost`，反之亦然
+- 确认 `sql/permissions.sql` 已执行（`ch_admin` 账号权限）
+
+### CMake 提示找不到 mysqlclient / mariadb
+
+```bash
+# Ubuntu / Debian
+sudo apt install -y default-libmysqlclient-dev
+# 或
+sudo apt install -y libmariadb-dev
+
+# Fedora
+sudo dnf install -y mariadb-connector-c-devel
+
+# Arch
+sudo pacman -S mariadb-libs
+```
+
+### 服务启动成功但页面空白或 404
+
+后端会按以下优先级挂载前端静态文件：
+
+1. `vue-frontend/dist`（Vue 3 生产产物）
+2. `frontend_old`（旧版静态前端）
+
+如果两者都不存在，则所有非 API 路径均返回 404。请先构建前端：
+
+```bash
+./start_linux.sh build-frontend
+# 或手动
+cd vue-frontend && npm install && npm run build
+```
+
+---
+
+## API 说明
+
+详细接口文档见 [`docs/API接口文档.md`](docs/API接口文档.md)。
+
+主要接口前缀：
+
+| 前缀 | 模块 |
+|------|------|
+| `POST /api/v1/auth/login` | 用户登录 |
+| `POST /api/v1/auth/logout` | 用户登出 |
+| `GET/POST /api/v1/users` | 用户管理（仅管理员） |
+| `PUT /api/v1/users/:id` | 编辑用户（仅管理员） |
+| `PUT /api/v1/users/me/password` | 当前用户修改自己的密码 |
+| `GET/POST /api/v1/communities` | 社区列表 |
+| `GET/POST/PUT/DELETE /api/v1/residents` | 居民档案 CRUD |
+| `GET/POST/PUT /api/v1/health` | 健康体检记录 |
+| `GET/POST/PUT/DELETE /api/v1/visits` | 随访记录 |
+| `GET/POST /api/v1/diseases` | 慢性病信息 |
+| `GET /api/v1/my-health` | 居民查看本人健康档案 |
+| `GET /api/v1/health-check` | 服务健康检查 |
+
+---
+
+## License
+
+本项目基于 [GPL-3.0](LICENSE) 协议开源。
+

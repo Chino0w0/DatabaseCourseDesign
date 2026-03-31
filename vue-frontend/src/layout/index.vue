@@ -170,7 +170,7 @@ const passwordRules = reactive<FormRules>({
     { required: true, message: '请输入新密码', trigger: 'blur' },
     { min: 6, message: '新密码长度不能少于 6 位', trigger: 'blur' }
   ],
-  confirm_password: [{ validator: validateConfirmPassword, trigger: 'blur' }]
+  confirm_password: [{ validator: validateConfirmPassword, trigger: ['blur', 'change'] }]
 })
 
 const openPasswordDialog = () => {
