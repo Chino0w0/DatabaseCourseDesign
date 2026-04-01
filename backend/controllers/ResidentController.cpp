@@ -75,6 +75,39 @@ void ResidentController::registerRoutes(httplib::Server &svr) {
   });
 
   // ──────────────────────────────────────────────────────────
+  // PUT /api/v1/communities/:id — 编辑社区
+  // ──────────────────────────────────────────────────────────
+  svr.Put(R"(/api/v1/communities/(\d+))", [](const httplib::Request &req,
+                                            httplib::Response &res) {
+    auto currentUser =
+        AuthSessionManager::requireUser(req, res, kResidentWriteRoleIds);
+    if (!currentUser.has_value()) {
+      return;
+    }
+    ResponseHelper::setCorsHeaders(res);
+    try {
+      int id = std::stoi(req.matches[1]);
+      json body = json::parse(req.body);
+      ResidentService svc;
+      json result = svc.updateCommunity(id, body);
+
+      if (result.contains("error")) {
+        bool not_found = result.value("not_found", false);
+        int code = not_found ? 404 : 400;
+        ResponseHelper::fail(res, code, result["error"].get<std::string>());
+        return;
+      }
+
+      ResponseHelper::ok(res, nullptr, "编辑社区成功");
+    } catch (const json::parse_error &) {
+      ResponseHelper::fail(res, 400, "请求体不是合法的 JSON");
+    } catch (const std::exception &e) {
+      logServerError("updateCommunity", e);
+      ResponseHelper::fail(res, 500, "编辑社区失败，请稍后重试");
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────
   // GET /api/v1/residents — 居民列表（分页 + 模糊搜索 + 社区过滤）
   // 查询参数：page(默认1)、size(默认10)、keyword、community_id
   // ──────────────────────────────────────────────────────────

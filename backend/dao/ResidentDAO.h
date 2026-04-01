@@ -42,6 +42,15 @@ public:
      */
     int insertCommunity(const Community& c);
 
+    /**
+     * @brief 更新社区信息
+     * @param id 社区 ID
+     * @param c  包含新值的社区实体（id / created_at 字段忽略）
+     * @return true 更新成功；false 社区不存在
+     * @throws std::runtime_error 数据库操作失败时抛出
+     */
+    bool updateCommunity(int id, const Community& c);
+
     // ============================================================
     // 居民（residents）相关操作
     // ============================================================

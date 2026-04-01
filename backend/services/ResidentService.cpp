@@ -1,8 +1,48 @@
 #include "ResidentService.h"
 
 #include "../dao/ResidentDAO.h"
-#include "../models/Resident.h"
 #include "../models/Community.h"
+#include "../models/Resident.h"
+#include "../utils/DatabaseManager.h"
+
+#include <optional>
+#include <regex>
+#include <sstream>
+#include <stdexcept>
+
+namespace {
+
+bool isValidCommunityContactPhone(const std::string& phone) {
+    if (phone.empty()) return true;
+    static const std::regex kPhonePattern(R"(^(1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$)");
+    return std::regex_match(phone, kPhonePattern);
+}
+
+std::string buildResidentUsername(int resident_id) {
+    return "resident_" + std::to_string(resident_id);
+}
+
+std::string buildDefaultResidentPassword(const std::string& id_card) {
+    if (id_card.size() >= 6) {
+        return id_card.substr(id_card.size() - 6);
+    }
+    return "123456";
+}
+
+std::optional<int> findResidentRoleId(DatabaseManager& db) {
+    MYSQL_RES* res = db.query("SELECT id FROM roles WHERE role_name = '居民' LIMIT 1");
+    if (!res) return std::nullopt;
+
+    std::optional<int> role_id;
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (row && row[0]) {
+        role_id = std::stoi(row[0]);
+    }
+    mysql_free_result(res);
+    return role_id;
+}
+
+} // namespace
 
 // ============================================================
 // 内部辅助：将实体对象转换为 JSON
@@ -63,9 +103,41 @@ json ResidentService::createCommunity(const json& body) {
     c.address       = body.value("address",       std::string());
     c.contact_phone = body.value("contact_phone", std::string());
 
+    if (!isValidCommunityContactPhone(c.contact_phone)) {
+        return json{{"error", "联系电话格式不正确，应为11位手机号或区号-座机号"}};
+    }
+
     ResidentDAO dao;
     int new_id = dao.insertCommunity(c);
     return json{{"id", new_id}};
+}
+
+json ResidentService::updateCommunity(int id, const json& body) {
+    ResidentDAO dao;
+    Community existing = dao.getCommunityById(id);
+    if (existing.id == 0) {
+        return json{{"error", "社区不存在"}, {"not_found", true}};
+    }
+
+    if (body.contains("name") && body["name"].is_string()) {
+        existing.name = body["name"].get<std::string>();
+        if (existing.name.empty()) {
+            return json{{"error", "社区名称不能为空"}};
+        }
+    }
+    if (body.contains("address") && body["address"].is_string()) {
+        existing.address = body["address"].get<std::string>();
+    }
+    if (body.contains("contact_phone") && body["contact_phone"].is_string()) {
+        existing.contact_phone = body["contact_phone"].get<std::string>();
+    }
+
+    if (!isValidCommunityContactPhone(existing.contact_phone)) {
+        return json{{"error", "联系电话格式不正确，应为11位手机号或区号-座机号"}};
+    }
+
+    dao.updateCommunity(id, existing);
+    return json{{"updated", true}};
 }
 
 // ============================================================
@@ -150,8 +222,60 @@ json ResidentService::createResident(const json& body) {
     r.emergency_contact = body.value("emergency_contact", std::string());
     r.emergency_phone   = body.value("emergency_phone",   std::string());
 
-    int new_id = dao.insertResident(r);
-    return json{{"id", new_id}};
+    DatabaseManager& db = DatabaseManager::getInstance();
+
+    std::string resident_username;
+    std::string resident_password;
+    int new_id = 0;
+
+    try {
+        db.execute("START TRANSACTION");
+
+        new_id = dao.insertResident(r);
+        resident_username = buildResidentUsername(new_id);
+        resident_password = buildDefaultResidentPassword(id_card);
+
+        auto resident_role_id = findResidentRoleId(db);
+        if (!resident_role_id.has_value()) {
+            throw std::runtime_error("缺少'居民'角色，请先初始化角色数据");
+        }
+
+        std::ostringstream user_sql;
+        user_sql << "INSERT INTO users (username, password_hash, real_name, phone, status) VALUES ("
+                 << "'" << db.escape(resident_username) << "', "
+                 << "SHA2('" << db.escape(resident_password) << "', 256), "
+                 << "'" << db.escape(r.name) << "', ";
+        if (r.phone.empty()) {
+            user_sql << "NULL";
+        } else {
+            user_sql << "'" << db.escape(r.phone) << "'";
+        }
+        user_sql << ", 1)";
+        db.execute(user_sql.str());
+
+        int new_user_id = static_cast<int>(db.lastInsertId());
+
+        db.execute("INSERT INTO user_roles (user_id, role_id) VALUES (" +
+                   std::to_string(new_user_id) + ", " +
+                   std::to_string(*resident_role_id) + ")");
+
+        db.execute("INSERT INTO resident_accounts (user_id, resident_id) VALUES (" +
+                   std::to_string(new_user_id) + ", " +
+                   std::to_string(new_id) + ")");
+
+        db.execute("COMMIT");
+    } catch (...) {
+        try {
+            db.execute("ROLLBACK");
+        } catch (...) {
+        }
+        throw;
+    }
+
+    return json{{"id", new_id},
+                {"account",
+                 {{"username", resident_username},
+                  {"default_password", resident_password}}}};
 }
 
 json ResidentService::updateResident(int id, const json& body) {

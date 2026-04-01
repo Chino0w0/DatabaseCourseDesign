@@ -79,6 +79,25 @@ int ResidentDAO::insertCommunity(const Community& c) {
     return static_cast<int>(db.lastInsertId());
 }
 
+bool ResidentDAO::updateCommunity(int id, const Community& c) {
+    if (getCommunityById(id).id == 0) return false;
+
+    auto& db = DatabaseManager::getInstance();
+    std::string name  = db.escape(c.name);
+    std::string addr  = db.escape(c.address);
+    std::string phone = db.escape(c.contact_phone);
+
+    std::ostringstream sql;
+    sql << "UPDATE communities SET "
+        << "name = '" << name << "', "
+        << "address = '" << addr << "', "
+        << "contact_phone = '" << phone << "' "
+        << "WHERE id = " << id;
+
+    db.execute(sql.str());
+    return true;
+}
+
 // ============================================================
 // 居民（residents）操作
 // ============================================================
