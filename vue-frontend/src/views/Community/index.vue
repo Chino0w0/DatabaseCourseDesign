@@ -71,8 +71,26 @@ const temp = reactive({
   contact_phone: ''
 })
 
+const phonePattern = /^(1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/
+
 const rules = reactive<FormRules>({
-  name: [{ required: true, message: '请输入社区名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入社区名称', trigger: 'blur' }],
+  contact_phone: [
+    {
+      validator: (_rule, value, callback) => {
+        if (!value) {
+          callback()
+          return
+        }
+        if (!phonePattern.test(String(value))) {
+          callback(new Error('联系电话格式不正确，应为11位手机号或区号-座机号'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ]
 })
 
 const resetTemp = () => {
@@ -136,7 +154,16 @@ const submitData = () => {
           getList()
         }
       } else {
-        ElMessage.info('社区编辑接口待后端补充后接通')
+        const res: any = await request.put(`/communities/${temp.id}`, {
+          name: temp.name,
+          address: temp.address,
+          contact_phone: temp.contact_phone
+        })
+        if (res.code === 200) {
+          ElMessage.success('社区更新成功')
+          dialogFormVisible.value = false
+          getList()
+        }
       }
     } finally {
       submitLoading.value = false

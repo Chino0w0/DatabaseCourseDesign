@@ -38,6 +38,14 @@ public:
      */
     json createCommunity(const json& body);
 
+    /**
+     * @brief 更新社区
+     * @param id 社区 ID
+     * @param body 请求体 JSON（name / address / contact_phone，至少一个字段）
+     * @return 更新成功返回 {"updated":true}；参数不合法时返回含 error 字段对象
+     */
+    json updateCommunity(int id, const json& body);
+
     // ============================================================
     // 居民接口
     // ============================================================

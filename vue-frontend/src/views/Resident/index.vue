@@ -256,8 +256,26 @@ const communityTemp = reactive({
   address: '',
   contact_phone: ''
 })
+const communityPhonePattern = /^(1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/
+
 const communityRules = reactive<FormRules>({
-  name: [{ required: true, message: '请输入社区名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入社区名称', trigger: 'blur' }],
+  contact_phone: [
+    {
+      validator: (_rule, value, callback) => {
+        if (!value) {
+          callback()
+          return
+        }
+        if (!communityPhonePattern.test(String(value))) {
+          callback(new Error('联系电话格式不正确，应为11位手机号或区号-座机号'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ]
 })
 
 const resetCommunityTemp = () => {
