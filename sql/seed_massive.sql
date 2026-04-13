@@ -23,9 +23,9 @@ START TRANSACTION;
 -- 密码均为 123456 的 SHA-256 简化哈希
 INSERT IGNORE INTO `users` (`username`, `password_hash`, `real_name`, `phone`)
 VALUES
-('doctor_perf_1', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', '压测医生甲', '13890000001'),
-('doctor_perf_2', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', '压测医生乙', '13890000002'),
-('nurse_perf_1',  '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', '压测护士甲', '13890000003');
+('doctor_perf_1', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', '张建国', '13890000001'),
+('doctor_perf_2', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', '王晓峰', '13890000002'),
+('nurse_perf_1',  '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', '刘秀兰', '13890000003');
 
 INSERT IGNORE INTO `user_roles` (`user_id`, `role_id`)
 SELECT u.id, r.id
@@ -44,9 +44,39 @@ SET @doctor2_id = (SELECT id FROM `users` WHERE username = 'doctor_perf_2' LIMIT
 SET @nurse1_id  = (SELECT id FROM `users` WHERE username = 'nurse_perf_1' LIMIT 1);
 
 -- ============================================================
--- 1. 批量居民（200条）
+-- 1. 准备真实社区数据（脚本内自建，避免绑定本地已有社区）
+-- ============================================================
+INSERT INTO `communities` (`name`, `address`, `contact_phone`)
+SELECT '阳光社区', '城东区阳光路100号', '010-88881111'
+WHERE NOT EXISTS (SELECT 1 FROM `communities` WHERE `name` = '阳光社区')
+UNION ALL
+SELECT '和谐社区', '城西区和谐大道200号', '010-88882222'
+WHERE NOT EXISTS (SELECT 1 FROM `communities` WHERE `name` = '和谐社区')
+UNION ALL
+SELECT '幸福社区', '城南区幸福街300号', '010-88883333'
+WHERE NOT EXISTS (SELECT 1 FROM `communities` WHERE `name` = '幸福社区')
+UNION ALL
+SELECT '锦绣社区', '城北区锦绣路66号', '010-88884444'
+WHERE NOT EXISTS (SELECT 1 FROM `communities` WHERE `name` = '锦绣社区')
+UNION ALL
+SELECT '清河社区', '清河新区清源路88号', '010-88885555'
+WHERE NOT EXISTS (SELECT 1 FROM `communities` WHERE `name` = '清河社区')
+UNION ALL
+SELECT '长安社区', '长安区安泰路168号', '010-88886666'
+WHERE NOT EXISTS (SELECT 1 FROM `communities` WHERE `name` = '长安社区');
+
+SET @perf_c1_id = (SELECT id FROM `communities` WHERE `name` = '阳光社区' ORDER BY id LIMIT 1);
+SET @perf_c2_id = (SELECT id FROM `communities` WHERE `name` = '和谐社区' ORDER BY id LIMIT 1);
+SET @perf_c3_id = (SELECT id FROM `communities` WHERE `name` = '幸福社区' ORDER BY id LIMIT 1);
+SET @perf_c4_id = (SELECT id FROM `communities` WHERE `name` = '锦绣社区' ORDER BY id LIMIT 1);
+SET @perf_c5_id = (SELECT id FROM `communities` WHERE `name` = '清河社区' ORDER BY id LIMIT 1);
+SET @perf_c6_id = (SELECT id FROM `communities` WHERE `name` = '长安社区' ORDER BY id LIMIT 1);
+
+-- ============================================================
+-- 2. 批量居民（200条）
 -- 规则:
---   - name: 压测居民001..200
+--   - name: 内置真实中文姓名库（姓+名）规则组合，避免“压测居民001”占位名
+--   - community_id: 仅绑定脚本内创建的压测专用社区
 --   - id_card: 18位、可复现且唯一（990101 + 8位 + 4位）
 -- ============================================================
 INSERT IGNORE INTO `residents` (
@@ -59,14 +89,43 @@ WITH RECURSIVE seq AS (
   SELECT n + 1 FROM seq WHERE n < 200
 )
 SELECT
-  CONCAT('压测居民', LPAD(n, 3, '0')) AS `name`,
+  CONCAT(
+    ELT(MOD(n - 1, 24) + 1,
+      '王','李','张','刘','陈','杨','赵','黄','周','吴','徐','孙',
+      '胡','朱','高','林','何','郭','马','罗','梁','宋','郑','谢'
+    ),
+    ELT(MOD(n * 7 + 3, 30) + 1,
+      '伟','敏','静','磊','洋','勇','艳','杰','涛','明',
+      '超','秀英','霞','平','刚','桂英','军','玲','飞','丹',
+      '鹏','华','玉兰','建国','晓燕','志强','雪','小红','凯','慧'
+    )
+  ) AS `name`,
   IF(MOD(n, 2) = 0, '女', '男') AS `gender`,
   CONCAT('990101', LPAD(60000000 + n, 8, '0'), LPAD(n, 4, '0')) AS `id_card`,
   DATE_ADD('1950-01-01', INTERVAL MOD(n * 137, 25000) DAY) AS `birth_date`,
   CONCAT('139', LPAD(70000000 + n, 8, '0')) AS `phone`,
-  MOD(n - 1, 3) + 1 AS `community_id`,
-  CONCAT('压测小区', MOD(n - 1, 12) + 1, '栋', MOD(n - 1, 6) + 1, '单元', MOD(n - 1, 18) + 101, '室') AS `address`,
-  CONCAT('联系人', LPAD(n, 3, '0')) AS `emergency_contact`,
+  CASE MOD(n - 1, 6)
+    WHEN 0 THEN @perf_c1_id
+    WHEN 1 THEN @perf_c2_id
+    WHEN 2 THEN @perf_c3_id
+    WHEN 3 THEN @perf_c4_id
+    WHEN 4 THEN @perf_c5_id
+    ELSE @perf_c6_id
+  END AS `community_id`,
+  CONCAT(
+    ELT(MOD(n - 1, 6) + 1, '阳光社区', '和谐社区', '幸福社区', '锦绣社区', '清河社区', '长安社区'),
+    MOD(n - 1, 6) + 1, '栋', MOD(n - 1, 6) + 1, '单元', MOD(n - 1, 18) + 101, '室'
+  ) AS `address`,
+  CONCAT(
+    ELT(MOD(n * 5 + 1, 24) + 1,
+      '王','李','张','刘','陈','杨','赵','黄','周','吴','徐','孙',
+      '胡','朱','高','林','何','郭','马','罗','梁','宋','郑','谢'
+    ),
+    ELT(MOD(n * 11 + 2, 20) + 1,
+      '秀兰','建华','桂英','国强','淑芬','志刚','玉梅','德华','美玲','海燕',
+      '志明','凤英','国华','小军','春梅','永强','淑珍','红梅','晓红','文杰'
+    )
+  ) AS `emergency_contact`,
   CONCAT('137', LPAD(60000000 + n, 8, '0')) AS `emergency_phone`
 FROM seq;
 
@@ -77,7 +136,7 @@ INSERT IGNORE INTO `users` (`username`, `password_hash`, `real_name`, `phone`)
 SELECT
   CONCAT('resident_perf_', RIGHT(r.id_card, 6)) AS username,
   '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92' AS password_hash,
-  CONCAT(r.name, '账号') AS real_name,
+  r.name AS real_name,
   r.phone
 FROM `residents` r
 WHERE r.id_card LIKE '990101%';
@@ -252,4 +311,14 @@ UNION ALL
 SELECT '压测居民慢病关联量', COUNT(*)
 FROM `resident_diseases` rd
 JOIN `residents` r ON r.id = rd.resident_id
-WHERE r.id_card LIKE '990101%';
+WHERE r.id_card LIKE '990101%'
+UNION ALL
+SELECT '占位姓名数量(应为0)', COUNT(*)
+FROM `residents`
+WHERE `id_card` LIKE '990101%'
+  AND `name` LIKE '压测居民%'
+UNION ALL
+SELECT '占位联系人数量(应为0)', COUNT(*)
+FROM `residents`
+WHERE `id_card` LIKE '990101%'
+  AND `emergency_contact` LIKE '联系人%';
